@@ -9,6 +9,9 @@ on-device via Apple's Vision framework; nothing leaves your Mac.
 - **⌘⇧O** (or the menu) opens macOS's own region-selection crosshair —
   the same UI as ⌘⇧4 — then runs on-device text recognition on the capture
   and copies the result straight to the clipboard
+- **Choose Image…** runs the same OCR on an existing image file (PNG, JPG,
+  etc.) via a standard file picker, for text in screenshots or photos you
+  already have saved rather than a fresh screen capture
 - Menu bar icon flashes ✓ on success, **?** if no text was found; reverts
   after ~1s. No windows, no popups to dismiss
 - Esc during selection cancels cleanly — nothing is copied, nothing is left

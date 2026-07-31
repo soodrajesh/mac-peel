@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import UniformTypeIdentifiers
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
@@ -21,6 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         captureItem.keyEquivalentModifierMask = [.command, .shift]
         captureItem.target = self
         menu.addItem(captureItem)
+        let openImageItem = NSMenuItem(title: "Choose Image…", action: #selector(chooseImage), keyEquivalent: "")
+        openImageItem.target = self
+        menu.addItem(openImageItem)
         menu.addItem(.separator())
         let quitItem = NSMenuItem(title: "Quit SnapText", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
@@ -42,6 +46,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 DispatchQueue.main.async { self?.isCapturing = false } // user pressed Esc
                 return
             }
+            self?.runOCR(on: image)
+        }
+    }
+
+    @objc private func chooseImage() {
+        guard !isCapturing else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.image]
+        guard panel.runModal() == .OK, let url = panel.url, let image = NSImage(contentsOf: url) else { return }
+
+        isCapturing = true
+        runOCR(on: image)
+    }
+
+    /// Shared tail end of both entry points: hash out to a background queue
+    /// so Vision's `.accurate` pass never blocks the main thread, then hop
+    /// back to update the icon.
+    private func runOCR(on image: NSImage) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let text = OCRService.recognize(image)
             DispatchQueue.main.async {
                 self?.finish(text: text)
