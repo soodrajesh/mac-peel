@@ -1,5 +1,6 @@
 # Build output
 SnapText.app/
+*.dmg
 
 # macOS
 .DS_Store
