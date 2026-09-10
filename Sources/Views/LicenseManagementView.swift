@@ -2,14 +2,14 @@ import SwiftUI
 
 /// Same visual/interaction pattern as MacGroom's
 /// `Sources/Views/LicenseManagementView.swift`: status card, verification
-/// banner, Enter/Update License button — scoped to SnapText's own
-/// `@AppStorage` key and `SnapTextLicenseChecker`.
+/// banner, Enter/Update License button — scoped to MacPeel's own
+/// `@AppStorage` key and `MacPeelLicenseChecker`.
 struct LicenseManagementView: View {
-    @AppStorage("com.rajeshsood.snaptext.licenseKey") private var storedLicenseKey = ""
+    @AppStorage("com.rajeshsood.macpeel.licenseKey") private var storedLicenseKey = ""
 
     // Settings is its own Scene/window — it doesn't inherit the main
     // app's environment, so this view verifies independently.
-    private let checker = SnapTextLicenseChecker()
+    private let checker = MacPeelLicenseChecker()
 
     @State private var isLicenseActive = false
     @State private var showLicenseEntry = false
@@ -29,7 +29,7 @@ struct LicenseManagementView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("SnapText Pro")
+                    Text("MacPeel Pro")
                         .appFont(.headline)
                     Text(isVerifying ? "Verifying…" : (isLicenseActive ? "License Active" : "Free Version"))
                         .appFont(.caption, weight: .regular)
@@ -79,7 +79,7 @@ struct LicenseManagementView: View {
                 Spacer()
 
                 Button("Unlock Pro…") {
-                    NSWorkspace.shared.open(SnapTextLicenseConfig.purchaseURL)
+                    NSWorkspace.shared.open(MacPeelLicenseConfig.purchaseURL)
                 }
                 .buttonStyle(.link)
                 .appFont(.caption)
@@ -121,11 +121,11 @@ struct LicenseManagementView: View {
         do {
             let license = try await checker.verify(licenseKey: key)
             isLicenseActive = license.isValid
-            verificationMessage = "License verified — SnapText Pro unlocked."
+            verificationMessage = "License verified — MacPeel Pro unlocked."
             verificationError = false
         } catch {
             isLicenseActive = false
-            verificationMessage = (error as? SnapTextLicenseError)?.errorDescription ?? "License verification failed."
+            verificationMessage = (error as? MacPeelLicenseError)?.errorDescription ?? "License verification failed."
             verificationError = true
         }
     }

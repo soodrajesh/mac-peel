@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// A minimal "click to record" control for SnapText's global capture
+/// A minimal "click to record" control for MacPeel's global capture
 /// shortcut — Pro-only (see `SettingsView`). Installs a local key-down
 /// monitor while recording, captures the next key combo, converts it to
 /// Carbon's modifier mask via `HotKeyPreference.carbonModifiers`, and

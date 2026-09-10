@@ -22,16 +22,16 @@ struct OCRHistoryEntry: Codable, Identifiable, Equatable {
 }
 
 /// Keeps the most recent OCR results on disk, in the app's own Application
-/// Support directory — *not* `UserDefaults`. SnapText ships unsandboxed
-/// (see `SnapText.entitlements`), and a `UserDefaults`-backed plist is
+/// Support directory — *not* `UserDefaults`. MacPeel ships unsandboxed
+/// (see `MacPeel.entitlements`), and a `UserDefaults`-backed plist is
 /// trivially world-readable by any other local process via
-/// `defaults read com.rajeshsood.snaptext com.rajeshsood.snaptext.ocrHistory`,
+/// `defaults read com.rajeshsood.macpeel com.rajeshsood.macpeel.ocrHistory`,
 /// no permission prompt required. Extracted OCR text routinely includes
 /// passwords, 2FA codes, and other sensitive material — that exposure was
 /// unacceptable for a feature whose entire point is "keep recent results
 /// around."
 ///
-/// The file lives at `~/Library/Application Support/SnapText/history.json`
+/// The file lives at `~/Library/Application Support/MacPeel/history.json`
 /// with POSIX mode `0600` (owner read/write only), reasserted after every
 /// write since `FileManager` doesn't otherwise guarantee restrictive
 /// permissions on file creation. This isn't Keychain-grade protection, but
@@ -42,7 +42,7 @@ struct OCRHistoryEntry: Codable, Identifiable, Equatable {
 enum OCRHistoryStore {
     static let maxEntries = 50
 
-    private static let directoryName = "SnapText"
+    private static let directoryName = "MacPeel"
     private static let fileName = "history.json"
 
     private static var storeURL: URL? {

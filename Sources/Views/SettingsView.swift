@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// SnapText's Settings window. Order follows the shared mac-apps design
+/// MacPeel's Settings window. Order follows the shared mac-apps design
 /// system: Appearance, Text Size, app-specific preferences (Shortcut,
 /// Batch OCR toggle), History, License, About.
 struct SettingsView: View {
-    @AppStorage("com.rajeshsood.snaptext.appearance") private var appearanceRaw = AppearancePreference.system.rawValue
-    @AppStorage("com.rajeshsood.snaptext.textSize") private var textSizeRaw = TextSizePreference.medium.rawValue
-    @AppStorage("com.rajeshsood.snaptext.licenseKey") private var storedLicenseKey = ""
+    @AppStorage("com.rajeshsood.macpeel.appearance") private var appearanceRaw = AppearancePreference.system.rawValue
+    @AppStorage("com.rajeshsood.macpeel.textSize") private var textSizeRaw = TextSizePreference.medium.rawValue
+    @AppStorage("com.rajeshsood.macpeel.licenseKey") private var storedLicenseKey = ""
 
     @State private var isProLicensed = false
     @State private var isCheckingLicense = true
@@ -14,7 +14,7 @@ struct SettingsView: View {
 
     // Independent verification — Settings doesn't inherit the main app's
     // environment (see DESIGN-SYSTEM.md's note on Settings panes).
-    private let checker = SnapTextLicenseChecker()
+    private let checker = MacPeelLicenseChecker()
 
     @State private var hotKeyCode: UInt32 = HotKeyPreference.keyCode
     @State private var hotKeyModifiers: UInt32 = HotKeyPreference.modifiers
@@ -124,7 +124,7 @@ struct SettingsView: View {
 
             settingsGroup("Daily Usage") {
                 if isProLicensed {
-                    Label("Unlimited (SnapText Pro)", systemImage: "infinity")
+                    Label("Unlimited (MacPeel Pro)", systemImage: "infinity")
                         .appFont(.body)
                         .foregroundStyle(.secondary)
                 } else {
@@ -162,7 +162,7 @@ struct SettingsView: View {
                     .font(.system(size: 40))
                     .foregroundStyle(Color.accentColor)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("SnapText")
+                    Text("MacPeel")
                         .appFont(.title2, weight: .semibold)
                     Text("Version \(appVersion) (\(appBuild))")
                         .appFont(.caption)

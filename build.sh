@@ -2,8 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP="SnapText.app"
-BIN="SnapText"
+APP="MacPeel.app"
+BIN="MacPeel"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -12,21 +12,21 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <plist version="1.0">
 <dict>
 	<key>CFBundleExecutable</key>
-	<string>SnapText</string>
+	<string>MacPeel</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.rajeshsood.snaptext</string>
+	<string>com.rajeshsood.macpeel</string>
 	<key>CFBundleName</key>
-	<string>SnapText</string>
+	<string>MacPeel</string>
 	<key>CFBundleDisplayName</key>
-	<string>SnapText</string>
+	<string>MacPeel</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.2</string>
 	<key>CFBundleVersion</key>
-	<string>3</string>
+	<string>4</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>
@@ -102,13 +102,13 @@ TMPBIN="$(mktemp -d)"
 for ARCH in arm64 x86_64; do
   echo "Compiling $ARCH slice…"
   swiftc -O -target "$ARCH-apple-macos$MIN_OS" \
-    -o "$TMPBIN/SnapText-$ARCH" \
+    -o "$TMPBIN/MacPeel-$ARCH" \
     $SOURCES
 done
-lipo -create -output "$APP/Contents/MacOS/SnapText" "$TMPBIN/SnapText-arm64" "$TMPBIN/SnapText-x86_64"
+lipo -create -output "$APP/Contents/MacOS/MacPeel" "$TMPBIN/MacPeel-arm64" "$TMPBIN/MacPeel-x86_64"
 rm -rf "$TMPBIN"
 
-echo "Built $APP ($(lipo -archs "$APP/Contents/MacOS/SnapText"))"
+echo "Built $APP ($(lipo -archs "$APP/Contents/MacOS/MacPeel"))"
 
 # --- Sign: hardened runtime + entitlements, no App Sandbox ---
 # A real Developer ID Application identity is used when present. That's what
@@ -130,7 +130,7 @@ if [ -z "$IDENTITY" ]; then
 fi
 # No --deep: Apple deprecated it, and it signs any nested code with the
 # *outer* entitlements. These bundles have no nested code to sign anyway.
-codesign --force --options runtime --entitlements "$(dirname "$0")/SnapText.entitlements" --sign "$IDENTITY" "$APP"
+codesign --force --options runtime --entitlements "$(dirname "$0")/MacPeel.entitlements" --sign "$IDENTITY" "$APP"
 echo "Signed with: $IDENTITY (hardened runtime on)"
 
 

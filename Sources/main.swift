@@ -18,7 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// separate window with no shared SwiftUI environment) — this is the
     /// copy AppKit code (menu building, the capture/gating flow) reads.
     private var isProLicensed = false
-    private let licenseChecker = SnapTextLicenseChecker()
+    private let licenseChecker = MacPeelLicenseChecker()
     private var licenseRefreshTimer: Timer?
 
     private var batchImageMenuItem: NSMenuItem?
@@ -36,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: idleSymbol, accessibilityDescription: "SnapText")
+        statusItem.button?.image = NSImage(systemSymbolName: idleSymbol, accessibilityDescription: "MacPeel")
 
         buildMenu()
         // Registers with the fixed default until the async license check
@@ -95,7 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        let quitItem = NSMenuItem(title: "Quit SnapText", action: #selector(quit), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Quit MacPeel", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
 
@@ -159,8 +159,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func presentDefaultHotKeyFailureAlert() {
         let alert = NSAlert()
-        alert.messageText = "SnapText's Shortcut Isn't Working"
-        alert.informativeText = "SnapText's default shortcut (⌘⇧O) couldn't be registered — another app may already be using it. You can still start a capture from the menu bar icon."
+        alert.messageText = "MacPeel's Shortcut Isn't Working"
+        alert.informativeText = "MacPeel's default shortcut (⌘⇧O) couldn't be registered — another app may already be using it. You can still start a capture from the menu bar icon."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
         alert.runModal()
@@ -169,7 +169,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - License
 
     private func refreshLicense() async {
-        let key = UserDefaults.standard.string(forKey: "com.rajeshsood.snaptext.licenseKey") ?? ""
+        let key = UserDefaults.standard.string(forKey: "com.rajeshsood.macpeel.licenseKey") ?? ""
         guard !key.isEmpty else {
             isProLicensed = false
             return
@@ -210,16 +210,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Shown once, the very first time capture is ever attempted, so the
     /// system Screen Recording prompt (attributed to the `screencapture`
-    /// helper process, not visibly to "SnapText") has some in-app context
+    /// helper process, not visibly to "MacPeel") has some in-app context
     /// before it appears.
     private func showCaptureExplainerIfNeeded() {
-        let key = "com.rajeshsood.snaptext.hasShownCaptureExplainer"
+        let key = "com.rajeshsood.macpeel.hasShownCaptureExplainer"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
         UserDefaults.standard.set(true, forKey: key)
 
         let alert = NSAlert()
         alert.messageText = "Screen Recording Access"
-        alert.informativeText = "SnapText needs Screen Recording access to capture your screen. macOS may show a permission prompt next — click Allow, then try capturing again."
+        alert.informativeText = "MacPeel needs Screen Recording access to capture your screen. macOS may show a permission prompt next — click Allow, then try capturing again."
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Continue")
         alert.runModal()
@@ -231,14 +231,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// one-time alert pointing at System Settings the first time it happens
     /// this launch (avoids nagging on every repeated attempt).
     private func showScreenRecordingPermissionProblem() {
-        flash(symbol: permissionDeniedSymbol, description: "SnapText: screen recording permission needed")
+        flash(symbol: permissionDeniedSymbol, description: "MacPeel: screen recording permission needed")
 
         guard !hasWarnedAboutScreenRecordingPermission else { return }
         hasWarnedAboutScreenRecordingPermission = true
 
         let alert = NSAlert()
         alert.messageText = "Screen Recording Permission Needed"
-        alert.informativeText = "SnapText couldn't capture your screen. Open System Settings → Privacy & Security → Screen Recording, allow access, then try again."
+        alert.informativeText = "MacPeel couldn't capture your screen. Open System Settings → Privacy & Security → Screen Recording, allow access, then try again."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Open System Settings")
         alert.addButton(withTitle: "Not Now")
@@ -307,7 +307,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func finish(text: String, source: OCRHistoryEntry.Source) {
         isCapturing = false
         guard !text.isEmpty else {
-            flash(symbol: emptySymbol, description: "SnapText: no text found")
+            flash(symbol: emptySymbol, description: "MacPeel: no text found")
             return
         }
         NSPasteboard.general.clearContents()
@@ -315,7 +315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if isProLicensed {
             OCRHistoryStore.record(text: text, source: source)
         }
-        flash(symbol: successSymbol, description: "SnapText: text copied")
+        flash(symbol: successSymbol, description: "MacPeel: text copied")
     }
 
     /// Briefly swaps the menu bar icon to confirm success/failure, then
@@ -328,7 +328,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
             guard let self else { return }
-            self.statusItem.button?.image = NSImage(systemSymbolName: self.idleSymbol, accessibilityDescription: "SnapText")
+            self.statusItem.button?.image = NSImage(systemSymbolName: self.idleSymbol, accessibilityDescription: "MacPeel")
         }
     }
 
@@ -340,7 +340,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// than trusting a stale result captured once at launch, and falls back
     /// to a one-time-per-day in-app alert when it isn't.
     private func showUpsell() {
-        flash(symbol: lockedSymbol, description: "SnapText: daily limit reached")
+        flash(symbol: lockedSymbol, description: "MacPeel: daily limit reached")
 
         UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
             DispatchQueue.main.async {
@@ -371,9 +371,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func sendUpsellNotification() {
         let content = UNMutableNotificationContent()
         content.title = "Daily free limit reached"
-        content.body = "You've used all \(UsageTracker.freeDailyLimit) free OCR operations today. Resets at midnight. Unlock SnapText Pro for unlimited use, batch OCR, history, and custom hotkeys."
+        content.body = "You've used all \(UsageTracker.freeDailyLimit) free OCR operations today. Resets at midnight. Unlock MacPeel Pro for unlimited use, batch OCR, history, and custom hotkeys."
         content.sound = nil
-        let request = UNNotificationRequest(identifier: "com.rajeshsood.snaptext.upsell", content: content, trigger: nil)
+        let request = UNNotificationRequest(identifier: "com.rajeshsood.macpeel.upsell", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }
 
@@ -387,12 +387,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let alert = NSAlert()
         alert.messageText = "Daily Free Limit Reached"
-        alert.informativeText = "You've used all \(UsageTracker.freeDailyLimit) free OCR operations today. This resets at midnight. Unlock SnapText Pro for unlimited use, batch OCR, history, and custom hotkeys."
+        alert.informativeText = "You've used all \(UsageTracker.freeDailyLimit) free OCR operations today. This resets at midnight. Unlock MacPeel Pro for unlimited use, batch OCR, history, and custom hotkeys."
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "Learn About Pro")
         if alert.runModal() == .alertSecondButtonReturn {
-            NSWorkspace.shared.open(SnapTextLicenseConfig.purchaseURL)
+            NSWorkspace.shared.open(MacPeelLicenseConfig.purchaseURL)
         }
     }
 

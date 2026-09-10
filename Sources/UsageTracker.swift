@@ -10,8 +10,8 @@ import Foundation
 enum UsageTracker {
     static let freeDailyLimit = 20
 
-    private static let countKey = "com.rajeshsood.snaptext.usage.count"
-    private static let dayKey = "com.rajeshsood.snaptext.usage.day"
+    private static let countKey = "com.rajeshsood.macpeel.usage.count"
+    private static let dayKey = "com.rajeshsood.macpeel.usage.day"
 
     /// "2026-09-10" in the user's local calendar — used as the reset
     /// boundary so the cap resets at local midnight, not a rolling 24h

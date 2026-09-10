@@ -11,12 +11,12 @@ enum HotKeyPreference {
     static let defaultKeyCode: UInt32 = 31
     static let defaultModifiers: UInt32 = UInt32(cmdKey | shiftKey)
 
-    private static let keyCodeKey = "com.rajeshsood.snaptext.hotKeyCode"
-    private static let modifiersKey = "com.rajeshsood.snaptext.hotKeyModifiers"
+    private static let keyCodeKey = "com.rajeshsood.macpeel.hotKeyCode"
+    private static let modifiersKey = "com.rajeshsood.macpeel.hotKeyModifiers"
 
     /// Posted whenever the shortcut changes, so `AppDelegate` can
     /// re-register the global hotkey without a relaunch.
-    static let didChangeNotification = Notification.Name("com.rajeshsood.snaptext.hotKeyDidChange")
+    static let didChangeNotification = Notification.Name("com.rajeshsood.macpeel.hotKeyDidChange")
 
     static var keyCode: UInt32 {
         let stored = UserDefaults.standard.object(forKey: keyCodeKey) as? Int

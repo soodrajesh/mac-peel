@@ -1,4 +1,4 @@
-# SnapText
+# MacPeel
 
 A lightweight macOS screenshot-to-text menu bar app, written in Swift/
 AppKit + SwiftUI with no third-party dependencies. Offline and private —
@@ -23,9 +23,9 @@ your Mac.
   on disk (the capture is a temp file, deleted immediately after OCR)
 - No Dock icon (`LSUIElement`), minimal footprint
 
-## Free vs. SnapText Pro
+## Free vs. MacPeel Pro
 
-SnapText is free to use, with a fair daily cap; **SnapText Pro** removes it
+MacPeel is free to use, with a fair daily cap; **MacPeel Pro** removes it
 and adds power-user features. Both tiers run the same on-device OCR —
 nothing about recognition quality changes with the license.
 
@@ -38,10 +38,10 @@ nothing about recognition quality changes with the license.
 | OCR history log (recent results, copyable) | – | ✓ |
 | Custom hotkey remapping | – | ✓ (default stays ⌘⇧O) |
 
-When the free cap is hit, SnapText shows a clear "Unlock Pro" notification
+When the free cap is hit, MacPeel shows a clear "Unlock Pro" notification
 (and flashes a lock icon) instead of silently failing the capture.
 
-### SnapText Pro licensing
+### MacPeel Pro licensing
 
 Pro is unlocked with a license key, entered in **Settings → License**. It's
 verified against [Polar.sh](https://polar.sh)'s customer-portal License
@@ -50,8 +50,8 @@ Polar organization/product from MacGroom's own Suite Pro license. Verified
 license state is cached in the Keychain for 7 days so Pro features keep
 working offline between checks.
 
-The Polar organization/product for SnapText Pro doesn't exist yet — see the
-`TODO(polar)` block at the top of `Sources/License/SnapTextLicense.swift`
+The Polar organization/product for MacPeel Pro doesn't exist yet — see the
+`TODO(polar)` block at the top of `Sources/License/MacPeelLicense.swift`
 for exactly what needs to be created and filled in before this goes live.
 
 ## Build
@@ -59,13 +59,13 @@ for exactly what needs to be created and filled in before this goes live.
 Requires the Xcode Command Line Tools (`xcode-select --install`).
 
 ```bash
-git clone https://github.com/soodrajesh/mac-ocr.git
-cd mac-ocr
+git clone https://github.com/soodrajesh/mac-peel.git
+cd mac-peel
 ./build.sh
-open /Applications/SnapText.app
+open /Applications/MacPeel.app
 ```
 
-`build.sh` compiles `Sources/*.swift`, assembles `SnapText.app`, ad-hoc
+`build.sh` compiles `Sources/*.swift`, assembles `MacPeel.app`, ad-hoc
 codesigns it (`codesign --sign -`), and installs it to `/Applications`.
 
 ## Permissions
@@ -74,7 +74,7 @@ The first capture will prompt for **Screen Recording** access (macOS
 attributes this to whichever app invokes `screencapture`, even as a
 subprocess). Grant it in:
 
-**System Settings → Privacy & Security → Screen Recording → enable SnapText**
+**System Settings → Privacy & Security → Screen Recording → enable MacPeel**
 
 If it stops prompting/working after a rebuild, toggle the checkbox off and
 back on — macOS keys the grant to the app's code signature, which changes
@@ -83,7 +83,7 @@ each time an ad-hoc-signed binary is rebuilt.
 ## Auto-start at login
 
 System Settings → General → Login Items & Extensions → **+** → select
-`SnapText.app`.
+`MacPeel.app`.
 
 ## Notes
 
@@ -92,10 +92,10 @@ System Settings → General → Login Items & Extensions → **+** → select
   and mixed fonts.
 - The capture shortcut (⌘⇧O by default, remappable in Settings for Pro) is
   registered globally via Carbon's Event Manager — if another app already
-  claims that combination, SnapText's registration will
+  claims that combination, MacPeel's registration will
   silently fail to bind.
 - Pairs well with [ClipKeep](https://github.com/soodrajesh/mac-clipboard):
-  since SnapText's clipboard writes look like any other copy, they show up
+  since MacPeel's clipboard writes look like any other copy, they show up
   in ClipKeep's history automatically.
 
 ## License

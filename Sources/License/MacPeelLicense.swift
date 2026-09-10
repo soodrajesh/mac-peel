@@ -3,7 +3,7 @@ import Security
 
 // MARK: - Polar.sh integration config
 //
-// SnapText Pro is a SEPARATE Polar.sh organization/product from MacGroom's
+// MacPeel Pro is a SEPARATE Polar.sh organization/product from MacGroom's
 // — its own store, not a shared Suite Pro license. Nothing below is
 // provisioned yet; this is the integration point, clearly marked, so
 // wiring up the real product later is a config-only change. Modeled on
@@ -13,39 +13,39 @@ import Security
 // keyed by the license key + organization id, no API secret embedded in
 // the binary.
 //
-// TODO(polar): before shipping SnapText Pro,
-//   1. Create a Polar.sh organization + "SnapText Pro" product/benefit
+// TODO(polar): before shipping MacPeel Pro,
+//   1. Create a Polar.sh organization + "MacPeel Pro" product/benefit
 //      with a License Keys benefit attached (polar.sh dashboard → Products
 //      → New → Benefits → License Keys).
 //   2. Copy the resulting organization ID into
-//      `SnapTextLicenseConfig.organizationID` below (or set the
-//      SNAPTEXT_POLAR_ORG_ID env var at build time).
+//      `MacPeelLicenseConfig.organizationID` below (or set the
+//      MACPEEL_POLAR_ORG_ID env var at build time).
 //   3. Set the checkout URL used by the "Unlock Pro" upsell
-//      (`SnapTextLicenseConfig.purchaseURL`) to the real product's
+//      (`MacPeelLicenseConfig.purchaseURL`) to the real product's
 //      checkout link once it exists.
 //   4. No Polar API key/secret is needed in this binary — the
 //      customer-portal validate endpoint is deliberately public/client-safe
 //      (confirmed for MacGroom's own integration: an unauthenticated
 //      request with a well-formed body returns 404 for an unknown key, not
 //      401/403).
-enum SnapTextLicenseConfig {
-    /// TODO(polar): fill in once the SnapText Pro organization/product
+enum MacPeelLicenseConfig {
+    /// TODO(polar): fill in once the MacPeel Pro organization/product
     /// exists. Left empty so `LicenseChecker` can refuse to trust any key
     /// until this is configured, rather than silently validating against
     /// an organization id of "".
     static let organizationID: String = {
-        ProcessInfo.processInfo.environment["SNAPTEXT_POLAR_ORG_ID"] ?? ""
+        ProcessInfo.processInfo.environment["MACPEEL_POLAR_ORG_ID"] ?? ""
     }()
 
     /// TODO(polar): point this at the real checkout URL once the product
     /// page exists on gogenops.com / the Polar storefront.
-    static let purchaseURL = URL(string: "https://gogenops.com/snaptext-pro")!
+    static let purchaseURL = URL(string: "https://gogenops.com/macpeel-pro")!
 
     static var isConfigured: Bool { !organizationID.isEmpty }
 }
 
-/// Represents a verified SnapText Pro license.
-struct SnapTextLicense: Codable, Equatable {
+/// Represents a verified MacPeel Pro license.
+struct MacPeelLicense: Codable, Equatable {
     let key: String
     let isValid: Bool
     let status: String?
@@ -54,7 +54,7 @@ struct SnapTextLicense: Codable, Equatable {
     let activationUsage: Int?
 }
 
-enum SnapTextLicenseError: LocalizedError {
+enum MacPeelLicenseError: LocalizedError {
     case notConfigured
     case invalidLicenseKey
     case networkError(URLError)
@@ -67,7 +67,7 @@ enum SnapTextLicenseError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notConfigured:
-            return "SnapText Pro isn't configured yet — check back soon."
+            return "MacPeel Pro isn't configured yet — check back soon."
         case .invalidLicenseKey:
             return "The license key is invalid or not recognized."
         case .networkError(let error):
@@ -89,20 +89,20 @@ enum SnapTextLicenseError: LocalizedError {
 /// Local cache for verified license state, in the Keychain rather than
 /// `UserDefaults` so a license can't be forged with a single
 /// `defaults write`. Mirrors the intent of `mac-cleanup`'s
-/// `SecureLicenseCache`, scoped to SnapText's own bundle id; skips its
+/// `SecureLicenseCache`, scoped to MacPeel's own bundle id; skips its
 /// HMAC tamper tag since that key would itself need to be masked into this
 /// much smaller binary for comparatively low benefit — the honest ceiling
 /// either way is "extract a secret from the shipped binary," not "forge a
 /// cache entry via `defaults write`," which the Keychain move alone closes.
-private enum SnapTextLicenseCache {
-    private static let service = "com.rajeshsood.snaptext.license.cache.v1"
+private enum MacPeelLicenseCache {
+    private static let service = "com.rajeshsood.macpeel.license.cache.v1"
 
     private struct CachedEnvelope: Codable {
         let cachedAt: Date
-        let license: SnapTextLicense
+        let license: MacPeelLicense
     }
 
-    static func read(_ licenseKey: String) -> (Date, SnapTextLicense)? {
+    static func read(_ licenseKey: String) -> (Date, MacPeelLicense)? {
         guard let data = keychainRead(account: licenseKey) else { return nil }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -110,7 +110,7 @@ private enum SnapTextLicenseCache {
         return (envelope.cachedAt, envelope.license)
     }
 
-    static func write(_ licenseKey: String, _ license: SnapTextLicense) {
+    static func write(_ licenseKey: String, _ license: MacPeelLicense) {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         guard let data = try? encoder.encode(CachedEnvelope(cachedAt: Date(), license: license)) else { return }
@@ -145,7 +145,7 @@ private enum SnapTextLicenseCache {
         guard status == errSecItemNotFound else { return }
         var addQuery = query
         addQuery[kSecValueData as String] = data
-        // Not tied to device-unlock state — SnapText can fire (e.g. from a
+        // Not tied to device-unlock state — MacPeel can fire (e.g. from a
         // login item) before the user has unlocked their session.
         addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         SecItemAdd(addQuery as CFDictionary, nil)
@@ -161,12 +161,12 @@ private enum SnapTextLicenseCache {
     }
 }
 
-/// Verifies a SnapText Pro license key against Polar.sh's customer-portal
+/// Verifies a MacPeel Pro license key against Polar.sh's customer-portal
 /// License Keys API — same shape as `mac-cleanup`'s `LicenseChecker`, a
 /// separate organization/product from MacGroom's. See
-/// `SnapTextLicenseConfig` for the (currently unfilled) organization id
+/// `MacPeelLicenseConfig` for the (currently unfilled) organization id
 /// this validates against.
-final class SnapTextLicenseChecker {
+final class MacPeelLicenseChecker {
     private let urlSession: URLSession
 
     init(urlSession: URLSession = .shared) {
@@ -175,24 +175,24 @@ final class SnapTextLicenseChecker {
 
     /// Verify a license key, using a 7-day Keychain cache so the app still
     /// unlocks Pro features offline between checks.
-    func verify(licenseKey: String, useCache: Bool = true, cacheDuration: TimeInterval = 7 * 24 * 3600) async throws -> SnapTextLicense {
-        guard SnapTextLicenseConfig.isConfigured else { throw SnapTextLicenseError.notConfigured }
+    func verify(licenseKey: String, useCache: Bool = true, cacheDuration: TimeInterval = 7 * 24 * 3600) async throws -> MacPeelLicense {
+        guard MacPeelLicenseConfig.isConfigured else { throw MacPeelLicenseError.notConfigured }
         let trimmedKey = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if useCache, let cached = SnapTextLicenseCache.read(trimmedKey) {
+        if useCache, let cached = MacPeelLicenseCache.read(trimmedKey) {
             if Date().timeIntervalSince(cached.0) < cacheDuration {
                 return cached.1
             }
-            SnapTextLicenseCache.clear(trimmedKey)
+            MacPeelLicenseCache.clear(trimmedKey)
         }
 
         let license = try await validateRemote(trimmedKey)
-        SnapTextLicenseCache.write(trimmedKey, license)
+        MacPeelLicenseCache.write(trimmedKey, license)
         return license
     }
 
     func clearCache(_ licenseKey: String) {
-        SnapTextLicenseCache.clear(licenseKey.trimmingCharacters(in: .whitespacesAndNewlines))
+        MacPeelLicenseCache.clear(licenseKey.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     // MARK: - Remote call
@@ -211,7 +211,7 @@ final class SnapTextLicenseChecker {
         }
     }
 
-    private func validateRemote(_ licenseKey: String) async throws -> SnapTextLicense {
+    private func validateRemote(_ licenseKey: String) async throws -> MacPeelLicense {
         var request = URLRequest(url: URL(string: "https://api.polar.sh/v1/customer-portal/license-keys/validate")!)
         request.httpMethod = "POST"
         request.timeoutInterval = 10
@@ -219,18 +219,18 @@ final class SnapTextLicenseChecker {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode([
             "key": licenseKey,
-            "organization_id": SnapTextLicenseConfig.organizationID
+            "organization_id": MacPeelLicenseConfig.organizationID
         ])
 
         let data: Data
         let http: HTTPURLResponse
         do {
             let (responseData, response) = try await urlSession.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse else { throw SnapTextLicenseError.invalidResponse }
+            guard let httpResponse = response as? HTTPURLResponse else { throw MacPeelLicenseError.invalidResponse }
             data = responseData
             http = httpResponse
         } catch let error as URLError {
-            throw SnapTextLicenseError.networkError(error)
+            throw MacPeelLicenseError.networkError(error)
         }
 
         guard http.statusCode == 200 else {
@@ -238,14 +238,14 @@ final class SnapTextLicenseChecker {
         }
 
         guard let response = try? JSONDecoder().decode(PolarLicenseKeyResponse.self, from: data) else {
-            throw SnapTextLicenseError.invalidResponse
+            throw MacPeelLicenseError.invalidResponse
         }
 
         // A 200 from /validate means the key checked out against this
         // organization — `status` is informational here, not a second
         // gate, since Polar already returns a non-200 (mapped below) for
         // revoked/disabled keys.
-        return SnapTextLicense(
+        return MacPeelLicense(
             key: response.key,
             isValid: true,
             status: response.status,
@@ -260,7 +260,7 @@ final class SnapTextLicenseChecker {
     /// that doesn't exist under this organization, and a `422` with
     /// `{"detail": [{"msg": "...", "loc": [...]}]}` for a malformed
     /// request.
-    private func mapErrorResponse(status: Int, data: Data) -> SnapTextLicenseError {
+    private func mapErrorResponse(status: Int, data: Data) -> MacPeelLicenseError {
         let message = errorMessage(from: data)
         switch status {
         case 404:

@@ -113,7 +113,7 @@ struct ProLockedNotice: View {
         HStack(spacing: 8) {
             Image(systemName: "lock.fill")
                 .foregroundStyle(.secondary)
-            Text("\(feature) is a SnapText Pro feature.")
+            Text("\(feature) is a MacPeel Pro feature.")
                 .appFont(.caption)
                 .foregroundStyle(.secondary)
         }

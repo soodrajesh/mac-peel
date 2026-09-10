@@ -23,7 +23,7 @@ enum ScreenCapture {
     /// of reimplementing either.
     static func captureRegion() -> CaptureOutcome {
         let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("snaptext-\(UUID().uuidString).png")
+            .appendingPathComponent("macpeel-\(UUID().uuidString).png")
 
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
