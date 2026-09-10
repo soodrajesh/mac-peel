@@ -145,6 +145,7 @@ struct LicenseEntrySheet: View {
 
     @State private var licenseKey = ""
     @State private var errorMessage = ""
+    @Environment(\.textScale) private var textScale
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -162,7 +163,12 @@ struct LicenseEntrySheet: View {
                     .foregroundStyle(.secondary)
 
                 TextEditor(text: $licenseKey)
-                    .font(.system(.body, design: .monospaced))
+                    // `.appFont` has no `TextEditor` overload, so the scale
+                    // is applied directly here — this is the one place a
+                    // user reads/verifies a pasted license key, and it
+                    // previously didn't grow with Settings' Text Size
+                    // while every other label in this sheet did.
+                    .font(.system(size: AppFontStyle.body.basePointSize * textScale, design: .monospaced))
                     .frame(height: 100)
                     .padding(8)
                     .background(Color(.controlBackgroundColor))

@@ -12,14 +12,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let successSymbol = "checkmark.circle.fill"
     private let emptySymbol = "questionmark.circle"
     private let lockedSymbol = "lock.circle"
+    private let permissionDeniedSymbol = "exclamationmark.triangle.fill"
 
     /// Verified independently of Settings' own check (Settings is a
     /// separate window with no shared SwiftUI environment) — this is the
     /// copy AppKit code (menu building, the capture/gating flow) reads.
     private var isProLicensed = false
     private let licenseChecker = SnapTextLicenseChecker()
+    private var licenseRefreshTimer: Timer?
 
     private var batchImageMenuItem: NSMenuItem?
+
+    /// One-time-per-launch guards so failure alerts don't re-fire on every
+    /// single capture attempt once a condition is already known.
+    private var hasWarnedAboutDefaultHotKeyFailure = false
+    private var hasWarnedAboutScreenRecordingPermission = false
+    /// Keyed by `UsageTracker.today` so the cap-hit fallback alert (shown
+    /// when notifications aren't authorized) appears at most once per day,
+    /// not once per subsequent blocked capture attempt.
+    private var lastUpsellAlertDay: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -28,13 +39,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.image = NSImage(systemSymbolName: idleSymbol, accessibilityDescription: "SnapText")
 
         buildMenu()
+        // Registers with the fixed default until the async license check
+        // below resolves, so there's always a working shortcut immediately
+        // at launch rather than waiting on a network round trip.
         registerHotKey()
 
         NotificationCenter.default.addObserver(self, selector: #selector(registerHotKey), name: HotKeyPreference.didChangeNotification, object: nil)
 
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
+        // Notification permission is requested lazily, in context, the
+        // first time the daily cap is actually hit (see `showUpsell()`) —
+        // not here at cold launch, before the user has done anything that
+        // would explain why a screenshot-OCR menu-bar app wants to send
+        // notifications.
 
-        Task { await refreshLicense() }
+        Task {
+            await refreshLicense()
+            // Custom hotkey remapping is Pro-gated; re-register now that the
+            // real license state is known (F6: this previously never ran,
+            // so a lapsed Pro user's custom binding kept working silently).
+            registerHotKey()
+        }
+
+        // Re-check the license at least once a day independent of the user
+        // ever reopening Settings, so a revoked/expired license doesn't
+        // leave Pro-only gating (batch OCR, history, custom hotkey) stuck
+        // open indefinitely on a long-running install.
+        licenseRefreshTimer = Timer.scheduledTimer(withTimeInterval: 86400, repeats: true) { [weak self] _ in
+            Task { [weak self] in
+                await self?.refreshLicense()
+                self?.registerHotKey()
+            }
+        }
     }
 
     // MARK: - Menu
@@ -67,9 +102,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.menu = menu
     }
 
+    /// The shortcut actually in effect right now: the user's custom binding
+    /// when Pro-licensed, otherwise always the fixed default — matching
+    /// what Settings tells the user regardless of what's still sitting in
+    /// `HotKeyPreference` from a previous Pro period.
+    private func effectiveHotKey() -> (keyCode: UInt32, modifiers: UInt32) {
+        isProLicensed
+            ? (HotKeyPreference.keyCode, HotKeyPreference.modifiers)
+            : (HotKeyPreference.defaultKeyCode, HotKeyPreference.defaultModifiers)
+    }
+
     private func updateCaptureItemKeyEquivalent(_ item: NSMenuItem) {
-        let keyCode = HotKeyPreference.keyCode
-        let modifiers = HotKeyPreference.modifiers
+        let (keyCode, modifiers) = effectiveHotKey()
         item.keyEquivalent = HotKeyPreference.label(forKeyCode: keyCode).lowercased()
         var mask: NSEvent.ModifierFlags = []
         if modifiers & UInt32(cmdKey) != 0 { mask.insert(.command) }
@@ -81,12 +125,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func registerHotKey() {
         hotKey = nil // drop the old registration before installing a new one
-        hotKey = HotKey(keyCode: HotKeyPreference.keyCode, modifiers: HotKeyPreference.modifiers) { [weak self] in
+
+        let (keyCode, modifiers) = effectiveHotKey()
+        hotKey = HotKey(keyCode: keyCode, modifiers: modifiers) { [weak self] in
             self?.capture()
         }
+
+        if hotKey == nil {
+            // `HotKey.init?` returns nil when `RegisterEventHotKey` fails —
+            // e.g. the combo is already claimed globally by macOS or
+            // another app. Previously this failed completely silently: the
+            // menu showed the combo as active while the global shortcut did
+            // nothing.
+            let isDefaultCombo = keyCode == HotKeyPreference.defaultKeyCode && modifiers == HotKeyPreference.defaultModifiers
+            if !isDefaultCombo {
+                // A previously-working custom combo is no longer
+                // registrable (another app has since claimed it, etc.) —
+                // fall back to the default rather than leaving the user
+                // with a dead shortcut and no explanation. This posts
+                // `didChangeNotification`, which re-enters this method with
+                // the default combo.
+                HotKeyPreference.resetToDefault()
+            } else if !hasWarnedAboutDefaultHotKeyFailure {
+                hasWarnedAboutDefaultHotKeyFailure = true
+                presentDefaultHotKeyFailureAlert()
+            }
+        }
+
         if let captureItem = statusItem.menu?.item(withTitle: "Capture Region & OCR") {
             updateCaptureItemKeyEquivalent(captureItem)
         }
+    }
+
+    private func presentDefaultHotKeyFailureAlert() {
+        let alert = NSAlert()
+        alert.messageText = "SnapText's Shortcut Isn't Working"
+        alert.informativeText = "SnapText's default shortcut (⌘⇧O) couldn't be registered — another app may already be using it. You can still start a capture from the menu bar icon."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     // MARK: - License
@@ -113,14 +190,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showUpsell()
             return
         }
+        showCaptureExplainerIfNeeded()
         isCapturing = true
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let image = ScreenCapture.captureRegion() else {
+            switch ScreenCapture.captureRegion() {
+            case .cancelled:
                 DispatchQueue.main.async { self?.isCapturing = false } // user pressed Esc
-                return
+            case .permissionDenied:
+                DispatchQueue.main.async {
+                    self?.isCapturing = false
+                    self?.showScreenRecordingPermissionProblem()
+                }
+            case .success(let image):
+                self?.runOCR(on: [image], source: .regionCapture)
             }
-            self?.runOCR(on: [image], source: .regionCapture)
+        }
+    }
+
+    /// Shown once, the very first time capture is ever attempted, so the
+    /// system Screen Recording prompt (attributed to the `screencapture`
+    /// helper process, not visibly to "SnapText") has some in-app context
+    /// before it appears.
+    private func showCaptureExplainerIfNeeded() {
+        let key = "com.rajeshsood.snaptext.hasShownCaptureExplainer"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+
+        let alert = NSAlert()
+        alert.messageText = "Screen Recording Access"
+        alert.informativeText = "SnapText needs Screen Recording access to capture your screen. macOS may show a permission prompt next — click Allow, then try capturing again."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Continue")
+        alert.runModal()
+    }
+
+    /// Distinct feedback for a Screen-Recording-permission problem, as
+    /// opposed to the silent no-op that's correct for an Esc cancel. Flashes
+    /// a distinct icon every time (cheap, always useful), and shows a
+    /// one-time alert pointing at System Settings the first time it happens
+    /// this launch (avoids nagging on every repeated attempt).
+    private func showScreenRecordingPermissionProblem() {
+        flash(symbol: permissionDeniedSymbol, description: "SnapText: screen recording permission needed")
+
+        guard !hasWarnedAboutScreenRecordingPermission else { return }
+        hasWarnedAboutScreenRecordingPermission = true
+
+        let alert = NSAlert()
+        alert.messageText = "Screen Recording Permission Needed"
+        alert.informativeText = "SnapText couldn't capture your screen. Open System Settings → Privacy & Security → Screen Recording, allow access, then try again."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Not Now")
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+            NSWorkspace.shared.open(url)
         }
     }
 
@@ -134,8 +258,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         // Batch OCR (selecting several images at once) is a Pro feature —
-        // free tier stays single-image, same as before.
+        // free tier stays single-image, same as before. `NSOpenPanel` has
+        // no subtitle API, so this message is the only place a free user
+        // sees *why* ⌘-clicking a second file doesn't do anything.
         panel.allowsMultipleSelection = isProLicensed
+        panel.message = isProLicensed
+            ? "Choose one or more images to OCR."
+            : "Choose an image to OCR. Upgrade to Pro to select multiple images at once."
         panel.allowedContentTypes = [.image]
         guard panel.runModal() == .OK else { return }
         let images = panel.urls.compactMap { NSImage(contentsOf: $0) }
@@ -147,7 +276,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         SettingsWindowController.shared.show()
-        Task { await refreshLicense() }
+        Task {
+            await refreshLicense()
+            registerHotKey()
+        }
     }
 
     /// Shared tail end of both entry points: hash out to a background queue
@@ -175,7 +307,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func finish(text: String, source: OCRHistoryEntry.Source) {
         isCapturing = false
         guard !text.isEmpty else {
-            flash(symbol: emptySymbol)
+            flash(symbol: emptySymbol, description: "SnapText: no text found")
             return
         }
         NSPasteboard.general.clearContents()
@@ -183,14 +315,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if isProLicensed {
             OCRHistoryStore.record(text: text, source: source)
         }
-        flash(symbol: successSymbol)
+        flash(symbol: successSymbol, description: "SnapText: text copied")
     }
 
     /// Briefly swaps the menu bar icon to confirm success/failure, then
     /// reverts — the only feedback needed for a one-shot capture-and-copy
-    /// action with no window of its own.
-    private func flash(symbol: String) {
-        statusItem.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+    /// action with no window of its own. Every transient state carries a
+    /// real `accessibilityDescription` so VoiceOver users can tell success,
+    /// empty-result, locked, and permission-denied states apart — previously
+    /// all four collapsed to a nil description.
+    private func flash(symbol: String, description: String) {
+        statusItem.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
             guard let self else { return }
             self.statusItem.button?.image = NSImage(systemSymbolName: self.idleSymbol, accessibilityDescription: "SnapText")
@@ -198,18 +333,67 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// The free daily cap was hit: flash a distinct locked-icon state (so
-    /// the failure doesn't look like an ordinary "no text found" miss) and
-    /// fire a brief local notification pointing at the upgrade path,
-    /// rather than silently doing nothing.
+    /// the failure doesn't look like an ordinary "no text found" miss), and
+    /// try to fire a local notification pointing at the upgrade path. The
+    /// notification is only useful if it's actually authorized to appear —
+    /// this checks live authorization status right before sending rather
+    /// than trusting a stale result captured once at launch, and falls back
+    /// to a one-time-per-day in-app alert when it isn't.
     private func showUpsell() {
-        flash(symbol: lockedSymbol)
+        flash(symbol: lockedSymbol, description: "SnapText: daily limit reached")
 
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            DispatchQueue.main.async {
+                switch settings.authorizationStatus {
+                case .authorized, .provisional:
+                    self?.sendUpsellNotification()
+                case .notDetermined:
+                    // Never asked yet — ask now, in context (the cap was
+                    // just hit), rather than cold at launch. If the user
+                    // grants it, this notification is simply not delivered
+                    // this one time; the next cap-hit will use it.
+                    UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { granted, _ in
+                        if granted {
+                            DispatchQueue.main.async { self?.sendUpsellNotification() }
+                        } else {
+                            DispatchQueue.main.async { self?.showUpsellFallbackAlert() }
+                        }
+                    }
+                case .denied:
+                    self?.showUpsellFallbackAlert()
+                @unknown default:
+                    self?.showUpsellFallbackAlert()
+                }
+            }
+        }
+    }
+
+    private func sendUpsellNotification() {
         let content = UNMutableNotificationContent()
         content.title = "Daily free limit reached"
-        content.body = "You've used all \(UsageTracker.freeDailyLimit) free OCR operations today. Unlock SnapText Pro for unlimited use, batch OCR, history, and custom hotkeys."
+        content.body = "You've used all \(UsageTracker.freeDailyLimit) free OCR operations today. Resets at midnight. Unlock SnapText Pro for unlimited use, batch OCR, history, and custom hotkeys."
         content.sound = nil
         let request = UNNotificationRequest(identifier: "com.rajeshsood.snaptext.upsell", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
+    }
+
+    /// Durable fallback for when notifications are denied/undetermined and
+    /// can't be relied on: a one-time-per-day in-app alert, since the icon
+    /// flash alone (1.2s, easy to miss in peripheral vision) was previously
+    /// the *only* feedback a user with notifications off ever got.
+    private func showUpsellFallbackAlert() {
+        guard lastUpsellAlertDay != UsageTracker.today else { return }
+        lastUpsellAlertDay = UsageTracker.today
+
+        let alert = NSAlert()
+        alert.messageText = "Daily Free Limit Reached"
+        alert.informativeText = "You've used all \(UsageTracker.freeDailyLimit) free OCR operations today. This resets at midnight. Unlock SnapText Pro for unlimited use, batch OCR, history, and custom hotkeys."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Learn About Pro")
+        if alert.runModal() == .alertSecondButtonReturn {
+            NSWorkspace.shared.open(SnapTextLicenseConfig.purchaseURL)
+        }
     }
 
     @objc private func quit() {

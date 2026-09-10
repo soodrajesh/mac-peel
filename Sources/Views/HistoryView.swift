@@ -8,6 +8,7 @@ struct HistoryView: View {
 
     @State private var entries: [OCRHistoryEntry] = OCRHistoryStore.all()
     @State private var copiedID: UUID?
+    @State private var showClearConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -18,12 +19,22 @@ struct HistoryView: View {
                 Spacer()
                 if !entries.isEmpty {
                     Button("Clear", role: .destructive) {
-                        OCRHistoryStore.clear()
-                        entries = []
+                        showClearConfirmation = true
                     }
                     .buttonStyle(.borderless)
                     .appFont(.caption)
                 }
+            }
+            .confirmationDialog(
+                "Clear all \(entries.count) OCR history entries? This can't be undone.",
+                isPresented: $showClearConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Clear All", role: .destructive) {
+                    OCRHistoryStore.clear()
+                    entries = []
+                }
+                Button("Cancel", role: .cancel) {}
             }
 
             if !isProLicensed {
@@ -82,6 +93,14 @@ struct HistoryView: View {
         .padding(8)
         .background(Color(.controlBackgroundColor))
         .cornerRadius(6)
+        .contextMenu {
+            Button(role: .destructive) {
+                OCRHistoryStore.delete(id: entry.id)
+                entries.removeAll { $0.id == entry.id }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 }
 

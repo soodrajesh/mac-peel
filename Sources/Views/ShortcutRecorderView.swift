@@ -13,40 +13,51 @@ struct ShortcutRecorderView: View {
 
     @State private var isRecording = false
     @State private var monitor: Any?
+    @State private var errorMessage: String?
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(HotKeyPreference.displayString(keyCode: keyCode, modifiers: modifiers))
-                .appFont(.body, weight: .medium)
-                .monospaced()
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Color(.controlBackgroundColor))
-                .cornerRadius(6)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(isRecording ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: isRecording ? 2 : 1)
-                )
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(HotKeyPreference.displayString(keyCode: keyCode, modifiers: modifiers))
+                    .appFont(.body, weight: .medium)
+                    .monospaced()
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color(.controlBackgroundColor))
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(isRecording ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: isRecording ? 2 : 1)
+                    )
 
-            Button(isRecording ? "Press a shortcut…" : "Record") {
-                isRecording ? stopRecording() : startRecording()
-            }
-            .buttonStyle(.bordered)
-
-            if HotKeyPreference.isCustomized {
-                Button("Reset") {
-                    HotKeyPreference.resetToDefault()
-                    keyCode = HotKeyPreference.defaultKeyCode
-                    modifiers = HotKeyPreference.defaultModifiers
+                Button(isRecording ? "Press a shortcut…" : "Record") {
+                    isRecording ? stopRecording() : startRecording()
                 }
-                .buttonStyle(.borderless)
-                .appFont(.caption)
+                .buttonStyle(.bordered)
+
+                if HotKeyPreference.isCustomized {
+                    Button("Reset") {
+                        HotKeyPreference.resetToDefault()
+                        keyCode = HotKeyPreference.defaultKeyCode
+                        modifiers = HotKeyPreference.defaultModifiers
+                        errorMessage = nil
+                    }
+                    .buttonStyle(.borderless)
+                    .appFont(.caption)
+                }
+            }
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                    .appFont(.caption)
+                    .foregroundStyle(.red)
             }
         }
         .onDisappear { stopRecording() }
     }
 
     private func startRecording() {
+        errorMessage = nil
         isRecording = true
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             // Esc cancels without changing anything.
@@ -59,9 +70,23 @@ struct ShortcutRecorderView: View {
             // swallow normal typing everywhere else on the system.
             guard newModifiers != 0 else { return nil }
             let newKeyCode = UInt32(event.keyCode)
-            keyCode = newKeyCode
-            modifiers = newModifiers
-            onRecorded(newKeyCode, newModifiers)
+
+            // Verify the combo can actually be registered globally *before*
+            // persisting it. `HotKey.init?` returns nil when
+            // `RegisterEventHotKey` fails (e.g. the combo is already claimed
+            // by macOS or another app) — without this check the UI would
+            // show the new combo as "recorded" while the underlying global
+            // shortcut silently does nothing.
+            var trial = HotKey(keyCode: newKeyCode, modifiers: newModifiers, action: {})
+            if trial != nil {
+                trial = nil // release the trial registration immediately so the real registration (triggered by onRecorded below) can claim the combo
+                errorMessage = nil
+                keyCode = newKeyCode
+                modifiers = newModifiers
+                onRecorded(newKeyCode, newModifiers)
+            } else {
+                errorMessage = "This shortcut is already in use — try another."
+            }
             stopRecording()
             return nil
         }

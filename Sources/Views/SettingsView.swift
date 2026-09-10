@@ -155,6 +155,9 @@ struct SettingsView: View {
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
+                // Intentional exception to the `.appFont` policy: this is a
+                // decorative glyph, not text a user reads, so it stays a
+                // fixed size rather than scaling with Text Size.
                 Image(systemName: "text.viewfinder")
                     .font(.system(size: 40))
                     .foregroundStyle(Color.accentColor)

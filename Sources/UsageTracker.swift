@@ -15,8 +15,10 @@ enum UsageTracker {
 
     /// "2026-09-10" in the user's local calendar — used as the reset
     /// boundary so the cap resets at local midnight, not a rolling 24h
-    /// window.
-    private static var today: String {
+    /// window. Not private: `AppDelegate` reuses it to key its "already
+    /// shown the cap-hit fallback alert today" check, so that alert doesn't
+    /// re-derive its own day-rollover logic.
+    static var today: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = .current
