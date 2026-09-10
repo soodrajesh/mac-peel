@@ -23,9 +23,12 @@ struct LicenseManagementView: View {
                 if isVerifying {
                     ProgressView()
                         .controlSize(.small)
+                        .tint(Color.appAccent)
                 } else {
                     Image(systemName: isLicenseActive ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(isLicenseActive ? .green : .gray)
+                        .foregroundColor(isLicenseActive ? Color.appAccent : .gray)
+                        .font(.system(size: 18))
+                        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isLicenseActive)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -44,9 +47,7 @@ struct LicenseManagementView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(12)
-            .background(Color(.controlBackgroundColor))
-            .cornerRadius(8)
+            .cardStyle(padding: 12)
 
             if !verificationMessage.isEmpty {
                 HStack(spacing: 8) {
@@ -65,7 +66,8 @@ struct LicenseManagementView: View {
                     Text(storedLicenseKey.isEmpty ? "Enter License Key" : "Update License")
                         .appFont(.body)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
+                .tint(Color.appAccent)
 
                 if !storedLicenseKey.isEmpty {
                     Button(action: clearLicense) {
@@ -194,6 +196,8 @@ struct LicenseEntrySheet: View {
                 Spacer()
                 Button("Save License") { saveLicense() }
                     .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.appAccent)
                     .disabled(licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
 

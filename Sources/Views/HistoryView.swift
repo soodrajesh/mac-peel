@@ -47,11 +47,12 @@ struct HistoryView: View {
                     .padding(.vertical, 24)
             } else {
                 ScrollView {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 8) {
                         ForEach(entries) { entry in
                             historyRow(entry)
                         }
                     }
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: entries.map(\.id))
                 }
                 .frame(maxHeight: 260)
             }
@@ -60,7 +61,9 @@ struct HistoryView: View {
     }
 
     private func historyRow(_ entry: OCRHistoryEntry) -> some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: 10) {
+            IconTile(systemName: entry.source.icon, size: 26)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.text)
                     .appFont(.body)
@@ -86,13 +89,13 @@ struct HistoryView: View {
                 }
             } label: {
                 Image(systemName: copiedID == entry.id ? "checkmark" : "doc.on.doc")
+                    .foregroundStyle(copiedID == entry.id ? Color.appAccent : .secondary)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: copiedID)
             }
             .buttonStyle(.borderless)
             .help("Copy to clipboard")
         }
-        .padding(8)
-        .background(Color(.controlBackgroundColor))
-        .cornerRadius(6)
+        .cardStyle(padding: 10)
         .contextMenu {
             Button(role: .destructive) {
                 OCRHistoryStore.delete(id: entry.id)
@@ -110,16 +113,13 @@ struct ProLockedNotice: View {
     let feature: String
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "lock.fill")
-                .foregroundStyle(.secondary)
+        HStack(spacing: 10) {
+            IconTile(systemName: "lock.fill", size: 24)
             Text("\(feature) is a MacPeel Pro feature.")
                 .appFont(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.controlBackgroundColor))
-        .cornerRadius(6)
+        .cardStyle(padding: 10)
     }
 }

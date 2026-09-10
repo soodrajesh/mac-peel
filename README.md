@@ -5,6 +5,11 @@ AppKit + SwiftUI with no third-party dependencies. Offline and private —
 OCR runs entirely on-device via Apple's Vision framework; nothing leaves
 your Mac.
 
+The Settings window recently got a visual refresh — tinted purple icon
+tiles, card-based sections, a prominent daily-usage progress bar, and an
+audited light mode — following the shared mac-apps "modern & colorful"
+design system. See `CHANGELOG.md`.
+
 ## Features
 
 - **⌘⇧O** (or the menu) opens macOS's own region-selection crosshair —

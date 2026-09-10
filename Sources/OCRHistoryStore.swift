@@ -18,6 +18,13 @@ struct OCRHistoryEntry: Codable, Identifiable, Equatable {
             case .chooseImage: return "Choose Image"
             }
         }
+
+        var icon: String {
+            switch self {
+            case .regionCapture: return "viewfinder"
+            case .chooseImage: return "photo"
+            }
+        }
     }
 }
 

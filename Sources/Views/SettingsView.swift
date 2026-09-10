@@ -48,17 +48,21 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             List(SettingsSection.allCases, selection: $section) { item in
-                Label(item.rawValue, systemImage: item.icon)
-                    .appFont(.body)
-                    .tag(item)
+                HStack(spacing: 10) {
+                    IconTile(systemName: item.icon)
+                    Text(item.rawValue)
+                        .appFont(.body)
+                }
+                .tag(item)
             }
             .listStyle(.sidebar)
-            .frame(width: 150)
+            .frame(width: 170)
+            .background(.regularMaterial)
 
             Divider()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 16) {
                     switch section ?? .general {
                     case .general: generalSection
                     case .history: HistoryView(isProLicensed: isProLicensed)
@@ -68,7 +72,9 @@ struct SettingsView: View {
                 }
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: section)
             }
+            .background(Color(.windowBackgroundColor))
         }
         .frame(width: 560, height: 420)
         .environment(\.textScale, textSize.scale)
@@ -124,13 +130,24 @@ struct SettingsView: View {
 
             settingsGroup("Daily Usage") {
                 if isProLicensed {
-                    Label("Unlimited (MacPeel Pro)", systemImage: "infinity")
-                        .appFont(.body)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 10) {
+                        IconTile(systemName: "infinity", size: 22)
+                        Text("Unlimited (MacPeel Pro)")
+                            .appFont(.body, weight: .semibold)
+                            .foregroundStyle(Color.appAccent)
+                    }
                 } else {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(UsageTracker.countToday) of \(UsageTracker.freeDailyLimit) free OCR operations used today")
-                            .appFont(.body)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("\(UsageTracker.countToday)")
+                                .appFont(.title, weight: .bold)
+                                .foregroundStyle(Color.appAccent)
+                            Text("of \(UsageTracker.freeDailyLimit) free OCR operations used today")
+                                .appFont(.body, weight: .semibold)
+                        }
+                        ProgressView(value: Double(UsageTracker.countToday), total: Double(UsageTracker.freeDailyLimit))
+                            .tint(Color.appAccent)
+                            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: UsageTracker.countToday)
                         Text("Resets at midnight. Region capture and Choose Image both count.")
                             .appFont(.caption)
                             .foregroundStyle(.secondary)
@@ -140,9 +157,12 @@ struct SettingsView: View {
 
             settingsGroup("Batch OCR") {
                 if isProLicensed {
-                    Label("Choose Image… allows selecting multiple images at once.", systemImage: "checkmark.circle.fill")
-                        .appFont(.body)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 10) {
+                        IconTile(systemName: "checkmark.circle.fill", size: 22)
+                        Text("Choose Image… allows selecting multiple images at once.")
+                            .appFont(.body)
+                            .foregroundStyle(.secondary)
+                    }
                 } else {
                     ProLockedNotice(feature: "Batch OCR (select multiple images at once)")
                 }
@@ -158,9 +178,7 @@ struct SettingsView: View {
                 // Intentional exception to the `.appFont` policy: this is a
                 // decorative glyph, not text a user reads, so it stays a
                 // fixed size rather than scaling with Text Size.
-                Image(systemName: "text.viewfinder")
-                    .font(.system(size: 40))
-                    .foregroundStyle(Color.accentColor)
+                IconTile(systemName: "text.viewfinder", size: 52)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("MacPeel")
                         .appFont(.title2, weight: .semibold)
@@ -180,6 +198,7 @@ struct SettingsView: View {
 
             Spacer()
         }
+        .cardStyle()
     }
 
     private var appVersion: String {
@@ -198,6 +217,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             content()
         }
+        .cardStyle()
     }
 
     private func refreshLicense() async {

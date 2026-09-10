@@ -118,6 +118,55 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
     }
 }
 
+/// A small rounded-square, tinted icon tile wrapping a bare SF Symbol —
+/// the single "modern & colorful" v2 change (System Settings' own sidebar
+/// pattern) that does the most to fix a "monochrome" look. Background is
+/// `Color.appAccent` at low opacity; the symbol sits in `Color.appAccent`
+/// at roughly 60% of the tile's size.
+struct IconTile: View {
+    let systemName: String
+    var size: CGFloat = 26
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
+            .fill(Color.appAccent.opacity(0.15))
+            .frame(width: size, height: size)
+            .overlay(
+                Image(systemName: systemName)
+                    .font(.system(size: size * 0.55, weight: .medium))
+                    .foregroundStyle(Color.appAccent)
+            )
+    }
+}
+
+/// A rounded-corner card container for grouping related Settings/History
+/// content, per the v2 design system (12pt corner radius, 16pt padding,
+/// subtle shadow + hairline stroke instead of a flat fill).
+struct CardBackground: ViewModifier {
+    var padding: CGFloat = 16
+
+    func body(content: Content) -> some View {
+        content
+            .padding(padding)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(.regularMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color(.separatorColor), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.08), radius: 1, y: 1)
+    }
+}
+
+extension View {
+    /// Wraps content in a v2 "card" — see `CardBackground`.
+    func cardStyle(padding: CGFloat = 16) -> some View {
+        modifier(CardBackground(padding: padding))
+    }
+}
+
 extension Date {
     /// "3 days ago", "2 months ago", "just now", etc.
     var relativeDescription: String {

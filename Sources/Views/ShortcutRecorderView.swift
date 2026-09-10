@@ -27,13 +27,15 @@ struct ShortcutRecorderView: View {
                     .cornerRadius(6)
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(isRecording ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: isRecording ? 2 : 1)
+                            .stroke(isRecording ? Color.appAccent : Color.secondary.opacity(0.3), lineWidth: isRecording ? 2 : 1)
                     )
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isRecording)
 
                 Button(isRecording ? "Press a shortcut…" : "Record") {
                     isRecording ? stopRecording() : startRecording()
                 }
                 .buttonStyle(.bordered)
+                .tint(isRecording ? Color.appAccent : nil)
 
                 if HotKeyPreference.isCustomized {
                     Button("Reset") {
