@@ -1,0 +1,214 @@
+import SwiftUI
+
+/// SnapText's Settings window. Order follows the shared mac-apps design
+/// system: Appearance, Text Size, app-specific preferences (Shortcut,
+/// Batch OCR toggle), History, License, About.
+struct SettingsView: View {
+    @AppStorage("com.rajeshsood.snaptext.appearance") private var appearanceRaw = AppearancePreference.system.rawValue
+    @AppStorage("com.rajeshsood.snaptext.textSize") private var textSizeRaw = TextSizePreference.medium.rawValue
+    @AppStorage("com.rajeshsood.snaptext.licenseKey") private var storedLicenseKey = ""
+
+    @State private var isProLicensed = false
+    @State private var isCheckingLicense = true
+    @State private var section: SettingsSection? = .general
+
+    // Independent verification — Settings doesn't inherit the main app's
+    // environment (see DESIGN-SYSTEM.md's note on Settings panes).
+    private let checker = SnapTextLicenseChecker()
+
+    @State private var hotKeyCode: UInt32 = HotKeyPreference.keyCode
+    @State private var hotKeyModifiers: UInt32 = HotKeyPreference.modifiers
+
+    private var appearance: AppearancePreference {
+        AppearancePreference(rawValue: appearanceRaw) ?? .system
+    }
+
+    private var textSize: TextSizePreference {
+        TextSizePreference(rawValue: textSizeRaw) ?? .medium
+    }
+
+    enum SettingsSection: String, CaseIterable, Identifiable {
+        case general = "General"
+        case history = "History"
+        case license = "License"
+        case about = "About"
+
+        var id: String { rawValue }
+
+        var icon: String {
+            switch self {
+            case .general: return "gearshape"
+            case .history: return "clock.arrow.circlepath"
+            case .license: return "key"
+            case .about: return "info.circle"
+            }
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            List(SettingsSection.allCases, selection: $section) { item in
+                Label(item.rawValue, systemImage: item.icon)
+                    .appFont(.body)
+                    .tag(item)
+            }
+            .listStyle(.sidebar)
+            .frame(width: 150)
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    switch section ?? .general {
+                    case .general: generalSection
+                    case .history: HistoryView(isProLicensed: isProLicensed)
+                    case .license: LicenseManagementView()
+                    case .about: aboutSection
+                    }
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .frame(width: 560, height: 420)
+        .environment(\.textScale, textSize.scale)
+        .preferredColorScheme(appearance.colorScheme)
+        .task(id: storedLicenseKey) {
+            await refreshLicense()
+        }
+    }
+
+    // MARK: - General
+
+    private var generalSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            settingsGroup("Appearance") {
+                Picker("", selection: $appearanceRaw) {
+                    ForEach(AppearancePreference.allCases) { option in
+                        Text(option.label).tag(option.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+
+            settingsGroup("Text Size") {
+                Picker("", selection: $textSizeRaw) {
+                    ForEach(TextSizePreference.allCases) { option in
+                        Text(option.label).tag(option.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+
+            settingsGroup("Capture Shortcut") {
+                if isProLicensed {
+                    ShortcutRecorderView(keyCode: $hotKeyCode, modifiers: $hotKeyModifiers) { code, mods in
+                        HotKeyPreference.set(keyCode: code, modifiers: mods)
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        Text(HotKeyPreference.displayString(keyCode: HotKeyPreference.defaultKeyCode, modifiers: HotKeyPreference.defaultModifiers))
+                            .appFont(.body, weight: .medium)
+                            .monospaced()
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color(.controlBackgroundColor))
+                            .cornerRadius(6)
+                        Spacer()
+                    }
+                    ProLockedNotice(feature: "Custom hotkey remapping")
+                }
+            }
+
+            settingsGroup("Daily Usage") {
+                if isProLicensed {
+                    Label("Unlimited (SnapText Pro)", systemImage: "infinity")
+                        .appFont(.body)
+                        .foregroundStyle(.secondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(UsageTracker.countToday) of \(UsageTracker.freeDailyLimit) free OCR operations used today")
+                            .appFont(.body)
+                        Text("Resets at midnight. Region capture and Choose Image both count.")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            settingsGroup("Batch OCR") {
+                if isProLicensed {
+                    Label("Choose Image… allows selecting multiple images at once.", systemImage: "checkmark.circle.fill")
+                        .appFont(.body)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ProLockedNotice(feature: "Batch OCR (select multiple images at once)")
+                }
+            }
+        }
+    }
+
+    // MARK: - About
+
+    private var aboutSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "text.viewfinder")
+                    .font(.system(size: 40))
+                    .foregroundStyle(Color.accentColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("SnapText")
+                        .appFont(.title2, weight: .semibold)
+                    Text("Version \(appVersion) (\(appBuild))")
+                        .appFont(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text("A lightweight, offline screenshot-to-text menu bar app. OCR runs entirely on-device via Apple's Vision framework — nothing leaves your Mac.")
+                .appFont(.body)
+                .foregroundStyle(.secondary)
+
+            Text("© 2026 Rajesh Sood")
+                .appFont(.caption2)
+                .foregroundStyle(.tertiary)
+
+            Spacer()
+        }
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+    }
+
+    private var appBuild: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+    }
+
+    @ViewBuilder
+    private func settingsGroup<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .appFont(.subheadline, weight: .semibold)
+                .foregroundStyle(.secondary)
+            content()
+        }
+    }
+
+    private func refreshLicense() async {
+        isCheckingLicense = true
+        defer { isCheckingLicense = false }
+        guard !storedLicenseKey.isEmpty else {
+            isProLicensed = false
+            return
+        }
+        do {
+            let license = try await checker.verify(licenseKey: storedLicenseKey)
+            isProLicensed = license.isValid
+        } catch {
+            isProLicensed = false
+        }
+    }
+}
