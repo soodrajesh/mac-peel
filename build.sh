@@ -26,7 +26,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<key>CFBundleShortVersionString</key>
 	<string>1.2</string>
 	<key>CFBundleVersion</key>
-	<string>4</string>
+	<string>5</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>
@@ -49,8 +49,8 @@ let image = NSImage(size: NSSize(width: size, height: size))
 image.lockFocus()
 
 let bgRect = NSRect(x: 0, y: 0, width: size, height: size)
-NSGradient(starting: NSColor(calibratedRed: 0.30, green: 0.22, blue: 0.34, alpha: 1),
-           ending: NSColor(calibratedRed: 0.09, green: 0.06, blue: 0.11, alpha: 1))?
+NSGradient(starting: NSColor(calibratedRed: 0.55, green: 0.30, blue: 0.90, alpha: 1),
+           ending: NSColor(calibratedRed: 0.26, green: 0.10, blue: 0.55, alpha: 1))?
     .draw(in: bgRect, angle: -90)
 
 let config = NSImage.SymbolConfiguration(pointSize: size * 0.52, weight: .semibold)
