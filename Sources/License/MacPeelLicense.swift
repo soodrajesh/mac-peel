@@ -29,19 +29,25 @@ import Security
 //      request with a well-formed body returns 404 for an unknown key, not
 //      401/403).
 enum MacPeelLicenseConfig {
-    /// TODO(polar): fill in once the MacPeel Pro organization/product
-    /// exists. Left empty so `LicenseChecker` can refuse to trust any key
-    /// until this is configured, rather than silently validating against
-    /// an organization id of "".
+    /// MacPeel Pro's product lives in the same `macgroom` Polar
+    /// organization as MacGroom Pro and the other mac-apps products.
     static let organizationID: String = {
-        ProcessInfo.processInfo.environment["MACPEEL_POLAR_ORG_ID"] ?? ""
+        ProcessInfo.processInfo.environment["MACPEEL_POLAR_ORG_ID"] ?? "41537814-c35a-4def-bf4e-888ef4f530ce"
     }()
 
-    /// TODO(polar): point this at the real checkout URL once the product
-    /// page exists on gogenops.com / the Polar storefront.
-    static let purchaseURL = URL(string: "https://gogenops.com/macpeel-pro")!
+    /// MacPeel Pro's own License Keys benefit — since the org above is
+    /// shared, this scopes validation to this specific product (see
+    /// `validateRemote`'s comment) rather than accepting any key valid
+    /// anywhere in the org.
+    static let benefitID: String = {
+        ProcessInfo.processInfo.environment["MACPEEL_POLAR_BENEFIT_ID"] ?? "707b9613-101c-4a47-ac43-405a0d0f6355"
+    }()
 
-    static var isConfigured: Bool { !organizationID.isEmpty }
+    /// Real "MacPeel Pro" checkout link (Polar → Products → MacPeel Pro →
+    /// Share).
+    static let purchaseURL = URL(string: "https://buy.polar.sh/polar_cl_CQrvWzajJIQHUDErrmPjNjZ48FtqcNax6c0tN2noWyy")!
+
+    static var isConfigured: Bool { true }
 }
 
 /// Represents a verified MacPeel Pro license.
@@ -62,12 +68,15 @@ enum MacPeelLicenseError: LocalizedError {
     case licenseExpired
     case licenseDisabled
     case activationLimitExceeded
+    case wrongProduct
     case unknown(String)
 
     var errorDescription: String? {
         switch self {
         case .notConfigured:
             return "MacPeel Pro isn't configured yet — check back soon."
+        case .wrongProduct:
+            return "This license key isn't valid for MacPeel."
         case .invalidLicenseKey:
             return "The license key is invalid or not recognized."
         case .networkError(let error):
@@ -203,11 +212,13 @@ final class MacPeelLicenseChecker {
         let limitActivations: Int?
         let usage: Int?
         let expiresAt: String?
+        let benefitId: String?
 
         enum CodingKeys: String, CodingKey {
             case key, status, usage
             case limitActivations = "limit_activations"
             case expiresAt = "expires_at"
+            case benefitId = "benefit_id"
         }
     }
 
@@ -225,9 +236,17 @@ final class MacPeelLicenseChecker {
         // Bump this — and test against 2026-10 — before the Jan 2027
         // removal date.
         request.setValue("2026-04", forHTTPHeaderField: "Polar-Version")
+        // MacPeel Pro shares a Polar organization with MacGroom Pro and the
+        // other mac-apps products — the org alone doesn't tell Polar which
+        // product a key was bought for, so a key valid for any of them
+        // would otherwise also validate here. Passing `benefit_id` scopes
+        // the check to MacPeel's own License Keys benefit specifically; the
+        // response's own `benefit_id` is also cross-checked below as a
+        // second line of defense.
         request.httpBody = try JSONEncoder().encode([
             "key": licenseKey,
-            "organization_id": MacPeelLicenseConfig.organizationID
+            "organization_id": MacPeelLicenseConfig.organizationID,
+            "benefit_id": MacPeelLicenseConfig.benefitID
         ])
 
         let data: Data
@@ -247,6 +266,10 @@ final class MacPeelLicenseChecker {
 
         guard let response = try? JSONDecoder().decode(PolarLicenseKeyResponse.self, from: data) else {
             throw MacPeelLicenseError.invalidResponse
+        }
+
+        guard response.benefitId == MacPeelLicenseConfig.benefitID else {
+            throw MacPeelLicenseError.wrongProduct
         }
 
         // A 200 from /validate means the key checked out against this
