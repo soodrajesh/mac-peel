@@ -116,6 +116,13 @@ struct LicenseManagementView: View {
     }
 
     private func verify(_ key: String) async {
+        if OwnerAccess.isOwnerKey(key) {
+            isLicenseActive = true
+            verificationMessage = "MacPeel Pro unlocked (owner build)."
+            verificationError = false
+            return
+        }
+
         isVerifying = true
         verificationMessage = ""
         defer { isVerifying = false }
