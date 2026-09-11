@@ -60,6 +60,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             registerHotKey()
         }
 
+        // Once, at launch — the Settings window's Updates section reads
+        // the result back via UpdateState.shared and offers its own
+        // "Check for Updates" button to refresh it on demand.
+        UpdateState.shared.checkForUpdates()
+
         // Re-check the license at least once a day independent of the user
         // ever reopening Settings, so a revoked/expired license doesn't
         // leave Pro-only gating (batch OCR, history, custom hotkey) stuck

@@ -27,10 +27,13 @@ struct SettingsView: View {
         TextSizePreference(rawValue: textSizeRaw) ?? .medium
     }
 
+    @ObservedObject private var updateState = UpdateState.shared
+
     enum SettingsSection: String, CaseIterable, Identifiable {
         case general = "General"
         case history = "History"
         case license = "License"
+        case updates = "Updates"
         case about = "About"
 
         var id: String { rawValue }
@@ -40,6 +43,7 @@ struct SettingsView: View {
             case .general: return "gearshape"
             case .history: return "clock.arrow.circlepath"
             case .license: return "key"
+            case .updates: return "arrow.down.circle"
             case .about: return "info.circle"
             }
         }
@@ -67,6 +71,7 @@ struct SettingsView: View {
                     case .general: generalSection
                     case .history: HistoryView(isProLicensed: isProLicensed)
                     case .license: LicenseManagementView()
+                    case .updates: updatesSection
                     case .about: aboutSection
                     }
                 }
@@ -166,6 +171,39 @@ struct SettingsView: View {
                 } else {
                     ProLockedNotice(feature: "Batch OCR (select multiple images at once)")
                 }
+            }
+        }
+    }
+
+    // MARK: - Updates
+
+    private var updatesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            settingsGroup("Software Update") {
+                if let update = updateState.availableUpdate {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("MacPeel \(update.version) is available (you have \(appVersion))")
+                            .appFont(.body)
+                        if let notes = update.notes, !notes.isEmpty {
+                            Text(notes)
+                                .appFont(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Button("Get It") {
+                            guard let url = URL(string: update.url) else { return }
+                            NSWorkspace.shared.open(url)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.appAccent)
+                    }
+                } else {
+                    Text("You're on the latest version (\(appVersion)).")
+                        .appFont(.body)
+                        .foregroundStyle(.secondary)
+                }
+
+                Button("Check for Updates") { updateState.checkForUpdates() }
+                    .buttonStyle(.bordered)
             }
         }
     }
