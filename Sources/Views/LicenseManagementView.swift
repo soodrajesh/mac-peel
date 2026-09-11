@@ -29,6 +29,10 @@ struct LicenseManagementView: View {
                         .foregroundColor(isLicenseActive ? Color.appAccent : .gray)
                         .font(.system(size: 18))
                         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isLicenseActive)
+                        // Decorative status dot — the text right next to it
+                        // ("License Active" / "Free Version") already says
+                        // the same thing.
+                        .accessibilityHidden(true)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -53,6 +57,9 @@ struct LicenseManagementView: View {
                 HStack(spacing: 8) {
                     Image(systemName: verificationError ? "exclamationmark.circle" : "checkmark.circle")
                         .foregroundColor(verificationError ? .red : .green)
+                        // Decorative — verificationMessage right next to it
+                        // already states success/failure in words.
+                        .accessibilityHidden(true)
                     Text(verificationMessage)
                         .appFont(.caption)
                 }
@@ -76,6 +83,9 @@ struct LicenseManagementView: View {
                     }
                     .buttonStyle(.bordered)
                     .help("Remove stored license key")
+                    // Icon-only button — .help() alone supplies a mouse
+                    // tooltip, not a VoiceOver label.
+                    .accessibilityLabel("Remove stored license key")
                 }
 
                 Spacer()
@@ -189,6 +199,9 @@ struct LicenseEntrySheet: View {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.circle")
                         .foregroundColor(.red)
+                        // Decorative — errorMessage right next to it
+                        // already states the problem in words.
+                        .accessibilityHidden(true)
                     Text(errorMessage)
                         .appFont(.caption)
                 }

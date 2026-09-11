@@ -94,6 +94,10 @@ struct HistoryView: View {
             }
             .buttonStyle(.borderless)
             .help("Copy to clipboard")
+            // Icon-only button — the SF Symbol swap between the two states
+            // isn't itself an accessible label, so VoiceOver needs an
+            // explicit one that also reflects the "already copied" state.
+            .accessibilityLabel(copiedID == entry.id ? "Copied" : "Copy to clipboard")
         }
         .cardStyle(padding: 10)
         .contextMenu {
