@@ -36,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: idleSymbol, accessibilityDescription: "MacPeel")
+        statusItem.button?.image = NSImage(systemSymbolName: idleSymbol, accessibilityDescription: "MacPeel: capture screen and copy text")
 
         buildMenu()
         // Registers with the fixed default until the async license check
@@ -333,7 +333,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
             guard let self else { return }
-            self.statusItem.button?.image = NSImage(systemSymbolName: self.idleSymbol, accessibilityDescription: "MacPeel")
+            self.statusItem.button?.image = NSImage(systemSymbolName: self.idleSymbol, accessibilityDescription: "MacPeel: capture screen and copy text")
         }
     }
 

@@ -136,6 +136,12 @@ struct IconTile: View {
                     .font(.system(size: size * 0.55, weight: .medium))
                     .foregroundStyle(Color.appAccent)
             )
+            // Every call site pairs this with an adjacent text label that
+            // already says the same thing (a sidebar row name, "License
+            // Active", a source label, …) — without this, VoiceOver was
+            // announcing the SF Symbol's own name as a second, redundant
+            // element right next to the label that explains it.
+            .accessibilityHidden(true)
     }
 }
 
