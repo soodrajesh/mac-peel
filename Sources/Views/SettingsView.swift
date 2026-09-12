@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage("com.rajeshsood.macpeel.appearance") private var appearanceRaw = AppearancePreference.system.rawValue
     @AppStorage("com.rajeshsood.macpeel.textSize") private var textSizeRaw = TextSizePreference.medium.rawValue
     @AppStorage("com.rajeshsood.macpeel.licenseKey") private var storedLicenseKey = ""
+    @AppStorage("com.rajeshsood.macpeel.copyNotifications") private var copyNotificationsEnabled = true
 
     @State private var isProLicensed = false
     @State private var isCheckingLicense = true
@@ -158,6 +159,14 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+            }
+
+            settingsGroup("Copy Confirmation") {
+                Toggle("Show a notification with a text preview after each copy", isOn: $copyNotificationsEnabled)
+                    .appFont(.body)
+                Text("Off, or if notifications aren't authorized, MacPeel still confirms with a quick menu bar icon flash.")
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             settingsGroup("Batch OCR") {
