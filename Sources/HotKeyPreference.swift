@@ -16,10 +16,17 @@ enum HotKeyPreference {
     /// no remap UI, so without this they'd be stuck re-seeing "MacPeel's
     /// Shortcut Isn't Working" on every single launch forever, with no fix
     /// short of buying Pro. See `AppDelegate.registerHotKey()`.
+    ///
+    /// Ordered to prefer plain two-modifier combos (⌘⇧ + one key — the same
+    /// weight as the default) over anything requiring a third modifier held
+    /// down at once; the three-modifier ⌘⇧⌥O only exists as a last resort,
+    /// not the first thing tried. None of these are macOS system-reserved
+    /// shortcuts (unlike, say, ⌘⇧Q — that's Log Out — which is exactly the
+    /// kind of combo this list is designed to avoid).
     static let fallbackCandidates: [(keyCode: UInt32, modifiers: UInt32)] = [
-        (31, UInt32(cmdKey | shiftKey | optionKey)), // ⌘⇧⌥O — same key, adds Option
         (32, UInt32(cmdKey | shiftKey)),             // ⌘⇧U
         (40, UInt32(cmdKey | shiftKey)),             // ⌘⇧K
+        (31, UInt32(cmdKey | shiftKey | optionKey)), // ⌘⇧⌥O — same key, adds Option (last resort)
     ]
 
     private static let keyCodeKey = "com.rajeshsood.macpeel.hotKeyCode"
