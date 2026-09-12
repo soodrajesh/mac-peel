@@ -11,8 +11,43 @@ enum HotKeyPreference {
     static let defaultKeyCode: UInt32 = 31
     static let defaultModifiers: UInt32 = UInt32(cmdKey | shiftKey)
 
+    /// Tried in order, after the default, when ⌘⇧O itself can't be
+    /// registered (another app has claimed it globally) — free users have
+    /// no remap UI, so without this they'd be stuck re-seeing "MacPeel's
+    /// Shortcut Isn't Working" on every single launch forever, with no fix
+    /// short of buying Pro. See `AppDelegate.registerHotKey()`.
+    ///
+    /// Ordered to prefer plain two-modifier combos (⌘⇧ + one key — the same
+    /// weight as the default) over anything requiring a third modifier held
+    /// down at once; the three-modifier ⌘⇧⌥O only exists as a last resort,
+    /// not the first thing tried. None of these are macOS system-reserved
+    /// shortcuts (unlike, say, ⌘⇧Q — that's Log Out — which is exactly the
+    /// kind of combo this list is designed to avoid).
+    static let fallbackCandidates: [(keyCode: UInt32, modifiers: UInt32)] = [
+        (32, UInt32(cmdKey | shiftKey)),             // ⌘⇧U
+        (40, UInt32(cmdKey | shiftKey)),             // ⌘⇧K
+        (31, UInt32(cmdKey | shiftKey | optionKey)), // ⌘⇧⌥O — same key, adds Option (last resort)
+    ]
+
     private static let keyCodeKey = "com.rajeshsood.macpeel.hotKeyCode"
     private static let modifiersKey = "com.rajeshsood.macpeel.hotKeyModifiers"
+
+    /// The shortcut actually registered right now, which for a free user on
+    /// a fallback combo differs from `defaultKeyCode`/`defaultModifiers` —
+    /// written by `AppDelegate.registerHotKey()` on every resolution, read
+    /// by `SettingsView` so its display never lies about what's live.
+    private static let activeKeyCodeKey = "com.rajeshsood.macpeel.activeHotKeyCode"
+    private static let activeModifiersKey = "com.rajeshsood.macpeel.activeHotKeyModifiers"
+
+    static var activeKeyCode: UInt32 {
+        get { (UserDefaults.standard.object(forKey: activeKeyCodeKey) as? Int).map(UInt32.init) ?? defaultKeyCode }
+        set { UserDefaults.standard.set(Int(newValue), forKey: activeKeyCodeKey) }
+    }
+
+    static var activeModifiers: UInt32 {
+        get { (UserDefaults.standard.object(forKey: activeModifiersKey) as? Int).map(UInt32.init) ?? defaultModifiers }
+        set { UserDefaults.standard.set(Int(newValue), forKey: activeModifiersKey) }
+    }
 
     /// Posted whenever the shortcut changes, so `AppDelegate` can
     /// re-register the global hotkey without a relaunch.

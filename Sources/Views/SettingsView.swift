@@ -120,8 +120,13 @@ struct SettingsView: View {
                         HotKeyPreference.set(keyCode: code, modifiers: mods)
                     }
                 } else {
+                    // Shows the combo actually registered right now, not
+                    // just the intended default — if another app has
+                    // claimed ⌘⇧O, AppDelegate has already fallen back to
+                    // an alternate, and this should never show a shortcut
+                    // that quietly doesn't work.
                     HStack(spacing: 8) {
-                        Text(HotKeyPreference.displayString(keyCode: HotKeyPreference.defaultKeyCode, modifiers: HotKeyPreference.defaultModifiers))
+                        Text(HotKeyPreference.displayString(keyCode: HotKeyPreference.activeKeyCode, modifiers: HotKeyPreference.activeModifiers))
                             .appFont(.body, weight: .medium)
                             .monospaced()
                             .padding(.horizontal, 10)
@@ -272,6 +277,10 @@ struct SettingsView: View {
         defer { isCheckingLicense = false }
         guard !storedLicenseKey.isEmpty else {
             isProLicensed = false
+            return
+        }
+        if OwnerAccess.isOwnerKey(storedLicenseKey) {
+            isProLicensed = true
             return
         }
         do {

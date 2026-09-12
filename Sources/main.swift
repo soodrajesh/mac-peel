@@ -118,7 +118,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateCaptureItemKeyEquivalent(_ item: NSMenuItem) {
-        let (keyCode, modifiers) = effectiveHotKey()
+        // The combo actually registered (may be a fallback), not just the
+        // intended one — `HotKeyPreference.active*` is only ever updated on
+        // a successful `RegisterEventHotKey` in `registerHotKey()`.
+        let keyCode = HotKeyPreference.activeKeyCode
+        let modifiers = HotKeyPreference.activeModifiers
         item.keyEquivalent = HotKeyPreference.label(forKeyCode: keyCode).lowercased()
         var mask: NSEvent.ModifierFlags = []
         if modifiers & UInt32(cmdKey) != 0 { mask.insert(.command) }
@@ -136,7 +140,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.capture()
         }
 
-        if hotKey == nil {
+        if hotKey != nil {
+            HotKeyPreference.activeKeyCode = keyCode
+            HotKeyPreference.activeModifiers = modifiers
+        } else {
             // `HotKey.init?` returns nil when `RegisterEventHotKey` fails —
             // e.g. the combo is already claimed globally by macOS or
             // another app. Previously this failed completely silently: the
@@ -151,9 +158,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // `didChangeNotification`, which re-enters this method with
                 // the default combo.
                 HotKeyPreference.resetToDefault()
-            } else if !hasWarnedAboutDefaultHotKeyFailure {
-                hasWarnedAboutDefaultHotKeyFailure = true
-                presentDefaultHotKeyFailureAlert()
+            } else {
+                // The default itself is claimed by something else, and
+                // there's no custom-remap escape hatch for a free user —
+                // without this, they'd see "Shortcut Isn't Working" on
+                // every single launch forever with no fix short of buying
+                // Pro just to pick a different key. Try a short list of
+                // alternates instead.
+                tryFallbackHotKey()
             }
         }
 
@@ -162,10 +174,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func tryFallbackHotKey() {
+        // Compared against *before* overwriting below — the default is
+        // re-probed on every launch (so MacPeel self-heals the moment the
+        // conflicting app is removed/updated), but that means this method
+        // also re-runs every launch even when nothing has changed. Without
+        // this comparison it would re-alert "Shortcut Changed to ⌘⇧U" on
+        // every single startup even though it landed on the exact same
+        // ⌘⇧U as last time — only a genuine change is worth interrupting
+        // the user about.
+        let previousKeyCode = HotKeyPreference.activeKeyCode
+        let previousModifiers = HotKeyPreference.activeModifiers
+        for candidate in HotKeyPreference.fallbackCandidates {
+            if let fallback = HotKey(keyCode: candidate.keyCode, modifiers: candidate.modifiers, action: { [weak self] in self?.capture() }) {
+                hotKey = fallback
+                HotKeyPreference.activeKeyCode = candidate.keyCode
+                HotKeyPreference.activeModifiers = candidate.modifiers
+                let isUnchanged = candidate.keyCode == previousKeyCode && candidate.modifiers == previousModifiers
+                if !isUnchanged && !hasWarnedAboutDefaultHotKeyFailure {
+                    hasWarnedAboutDefaultHotKeyFailure = true
+                    presentFallbackHotKeyAlert(candidate)
+                }
+                return
+            }
+        }
+        // Every candidate is also claimed — genuinely unusual; fall back to
+        // the old behavior of just explaining the menu-bar icon still works.
+        if !hasWarnedAboutDefaultHotKeyFailure {
+            hasWarnedAboutDefaultHotKeyFailure = true
+            presentDefaultHotKeyFailureAlert()
+        }
+    }
+
+    private func presentFallbackHotKeyAlert(_ candidate: (keyCode: UInt32, modifiers: UInt32)) {
+        let combo = HotKeyPreference.displayString(keyCode: candidate.keyCode, modifiers: candidate.modifiers)
+        let alert = NSAlert()
+        alert.messageText = "MacPeel's Shortcut Changed to \(combo)"
+        alert.informativeText = "MacPeel's default shortcut (⌘⇧O) is already used by another app on this Mac, so MacPeel switched to \(combo) instead. You can still start a capture from the menu bar icon at any time."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
     private func presentDefaultHotKeyFailureAlert() {
         let alert = NSAlert()
         alert.messageText = "MacPeel's Shortcut Isn't Working"
-        alert.informativeText = "MacPeel's default shortcut (⌘⇧O) couldn't be registered — another app may already be using it. You can still start a capture from the menu bar icon."
+        alert.informativeText = "MacPeel's default shortcut (⌘⇧O) and its usual alternates are all already used by other apps on this Mac. You can still start a capture from the menu bar icon."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
         alert.runModal()
@@ -177,6 +231,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let key = UserDefaults.standard.string(forKey: "com.rajeshsood.macpeel.licenseKey") ?? ""
         guard !key.isEmpty else {
             isProLicensed = false
+            return
+        }
+        if OwnerAccess.isOwnerKey(key) {
+            isProLicensed = true
             return
         }
         do {
