@@ -10,6 +10,12 @@ tiles, card-based sections, a prominent daily-usage progress bar, and an
 audited light mode — following the shared mac-apps "modern & colorful"
 design system. See `CHANGELOG.md`.
 
+## Screenshots
+
+<img src="screenshots/settings-dark.png" alt="MacPeel Settings: Appearance (System/Light/Dark), Text Size, Capture Shortcut (⇧⌘O), and a Daily Usage progress bar" width="420" />
+
+_MacPeel's OCR itself runs invisibly — capture, then the recognized text lands straight on your clipboard, no window to screenshot. This is the Settings window, the one persistent UI it has._
+
 ## Features
 
 - **⌘⇧O** (or the menu) opens macOS's own region-selection crosshair —
