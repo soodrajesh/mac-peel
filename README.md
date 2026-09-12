@@ -12,9 +12,10 @@ design system. See `CHANGELOG.md`.
 
 ## Screenshots
 
-<img src="screenshots/settings-dark.png" alt="MacPeel Settings: Appearance (System/Light/Dark), Text Size, Capture Shortcut (⇧⌘O), and a Daily Usage progress bar" width="420" />
+<img src="screenshots/settings-general-pro-dark.png" alt="MacPeel Settings > General with Pro unlocked: custom Capture Shortcut recorder, unlimited Daily Usage, a Copy Confirmation notification toggle, and unlocked Batch OCR" width="420" />
+<img src="screenshots/settings-history-dark.png" alt="MacPeel Settings > History showing recent OCR results, each re-copyable to the clipboard on demand" width="420" />
 
-_MacPeel's OCR itself runs invisibly — capture, then the recognized text lands straight on your clipboard, no window to screenshot. This is the Settings window, the one persistent UI it has._
+_MacPeel's OCR itself runs invisibly — capture, then the recognized text lands straight on your clipboard, no window to screenshot. The Settings window (General, History, License, Updates, About) is the one persistent UI it has._
 
 ## Features
 
