@@ -49,6 +49,13 @@ struct OCRHistoryEntry: Codable, Identifiable, Equatable {
 enum OCRHistoryStore {
     static let maxEntries = 50
 
+    /// Posted after every write — `HistoryView` observes this to refresh
+    /// its list live. Without it, a capture made while Settings is already
+    /// open on the History tab never appears until the tab (or the whole
+    /// window) is closed and reopened, since `@State private var entries`
+    /// was only ever loaded once, on `.onAppear`.
+    static let didChangeNotification = Notification.Name("com.rajeshsood.macpeel.ocrHistoryDidChange")
+
     private static let directoryName = "MacPeel"
     private static let fileName = "history.json"
 
@@ -87,6 +94,7 @@ enum OCRHistoryStore {
     static func clear() {
         guard let url = storeURL else { return }
         try? FileManager.default.removeItem(at: url)
+        NotificationCenter.default.post(name: didChangeNotification, object: nil)
     }
 
     private static func save(_ entries: [OCRHistoryEntry]) {
@@ -103,6 +111,7 @@ enum OCRHistoryStore {
             // the directory's mode, and a future FileManager/OS change
             // shouldn't be able to silently widen this.
             try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+            NotificationCenter.default.post(name: didChangeNotification, object: nil)
         } catch {
             // Best-effort: nothing more useful to do than leave the
             // previous on-disk state untouched.

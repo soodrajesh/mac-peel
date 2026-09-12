@@ -57,7 +57,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Custom hotkey remapping is Pro-gated; re-register now that the
             // real license state is known (F6: this previously never ran,
             // so a lapsed Pro user's custom binding kept working silently).
-            registerHotKey()
+            // Explicitly hopped to the main thread: an unstructured `Task`
+            // resuming after `await` on a non-actor-isolated method has no
+            // guaranteed thread, but `registerHotKey()` calls Carbon's
+            // `RegisterEventHotKey` and mutates AppKit menu items, both of
+            // which need the main thread — calling this off it produced
+            // exactly the run-to-run flakiness reported (the fallback
+            // alert sometimes firing, sometimes not, for the same state).
+            DispatchQueue.main.async { [weak self] in self?.registerHotKey() }
         }
 
         // Once, at launch — the Settings window's Updates section reads
@@ -72,7 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         licenseRefreshTimer = Timer.scheduledTimer(withTimeInterval: 86400, repeats: true) { [weak self] _ in
             Task { [weak self] in
                 await self?.refreshLicense()
-                self?.registerHotKey()
+                DispatchQueue.main.async { self?.registerHotKey() }
             }
         }
     }
@@ -339,9 +346,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         SettingsWindowController.shared.show()
-        Task {
-            await refreshLicense()
-            registerHotKey()
+        Task { [weak self] in
+            await self?.refreshLicense()
+            DispatchQueue.main.async { self?.registerHotKey() }
         }
     }
 

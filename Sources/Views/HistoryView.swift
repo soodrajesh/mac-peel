@@ -58,6 +58,9 @@ struct HistoryView: View {
             }
         }
         .onAppear { entries = OCRHistoryStore.all() }
+        .onReceive(NotificationCenter.default.publisher(for: OCRHistoryStore.didChangeNotification)) { _ in
+            entries = OCRHistoryStore.all()
+        }
     }
 
     private func historyRow(_ entry: OCRHistoryEntry) -> some View {
