@@ -321,6 +321,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             OCRHistoryStore.record(text: text, source: source)
         }
         flash(symbol: successSymbol, description: "MacPeel: text copied")
+        sendCopyNotification(text: text)
+    }
+
+    /// Confirms a successful copy with a real notification banner showing a
+    /// preview of what's now on the clipboard — the 1.2s icon flash in
+    /// `flash(symbol:description:)` is easy to miss in peripheral vision and
+    /// gives no way to check *what* got copied without pasting first. Free
+    /// tier gets this too (unlike history); it's just a copy confirmation,
+    /// not a feature worth gating. Opt-out via Settings > General; also
+    /// silently skipped if notifications aren't authorized — never falls
+    /// back to an in-app alert per capture, since that would be far too
+    /// naggy for something this frequent (unlike the once-per-day upsell
+    /// alert this deliberately doesn't mirror).
+    private func sendCopyNotification(text: String) {
+        guard UserDefaults.standard.object(forKey: "com.rajeshsood.macpeel.copyNotifications") as? Bool ?? true else { return }
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                switch settings.authorizationStatus {
+                case .authorized, .provisional:
+                    self.postCopyNotification(text: text)
+                case .notDetermined:
+                    UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { granted, _ in
+                        if granted {
+                            DispatchQueue.main.async { self.postCopyNotification(text: text) }
+                        }
+                    }
+                case .denied:
+                    break
+                @unknown default:
+                    break
+                }
+            }
+        }
+    }
+
+    private func postCopyNotification(text: String) {
+        let preview = text.count > 120 ? String(text.prefix(120)) + "…" : text
+        let content = UNMutableNotificationContent()
+        content.title = "Text copied"
+        content.body = preview
+        content.sound = nil
+        let request = UNNotificationRequest(identifier: "com.rajeshsood.macpeel.copyConfirmation", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
     }
 
     /// Briefly swaps the menu bar icon to confirm success/failure, then
