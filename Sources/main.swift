@@ -175,12 +175,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func tryFallbackHotKey() {
+        // Compared against *before* overwriting below — the default is
+        // re-probed on every launch (so MacPeel self-heals the moment the
+        // conflicting app is removed/updated), but that means this method
+        // also re-runs every launch even when nothing has changed. Without
+        // this comparison it would re-alert "Shortcut Changed to ⌘⇧U" on
+        // every single startup even though it landed on the exact same
+        // ⌘⇧U as last time — only a genuine change is worth interrupting
+        // the user about.
+        let previousKeyCode = HotKeyPreference.activeKeyCode
+        let previousModifiers = HotKeyPreference.activeModifiers
         for candidate in HotKeyPreference.fallbackCandidates {
             if let fallback = HotKey(keyCode: candidate.keyCode, modifiers: candidate.modifiers, action: { [weak self] in self?.capture() }) {
                 hotKey = fallback
                 HotKeyPreference.activeKeyCode = candidate.keyCode
                 HotKeyPreference.activeModifiers = candidate.modifiers
-                if !hasWarnedAboutDefaultHotKeyFailure {
+                let isUnchanged = candidate.keyCode == previousKeyCode && candidate.modifiers == previousModifiers
+                if !isUnchanged && !hasWarnedAboutDefaultHotKeyFailure {
                     hasWarnedAboutDefaultHotKeyFailure = true
                     presentFallbackHotKeyAlert(candidate)
                 }
