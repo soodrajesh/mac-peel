@@ -3,31 +3,16 @@ import Security
 
 // MARK: - Polar.sh integration config
 //
-// MacPeel Pro is a SEPARATE Polar.sh organization/product from MacGroom's
-// — its own store, not a shared Suite Pro license. Nothing below is
-// provisioned yet; this is the integration point, clearly marked, so
-// wiring up the real product later is a config-only change. Modeled on
+// MacPeel Pro is live. It's its own product/benefit (a distinct License
+// Keys benefit, distinct checkout link), but shares the `macgroom` Polar
+// organization with MacGroom Pro and the other mac-apps products rather
+// than having a separate organization/store. Modeled on
 // `mac-cleanup/Sources/MacGroomLicenseCheck.swift`'s `LicenseChecker`,
 // which validates against Polar's customer-portal License Keys API
 // (`POST /v1/customer-portal/license-keys/validate`) — a public endpoint,
 // keyed by the license key + organization id, no API secret embedded in
-// the binary.
-//
-// TODO(polar): before shipping MacPeel Pro,
-//   1. Create a Polar.sh organization + "MacPeel Pro" product/benefit
-//      with a License Keys benefit attached (polar.sh dashboard → Products
-//      → New → Benefits → License Keys).
-//   2. Copy the resulting organization ID into
-//      `MacPeelLicenseConfig.organizationID` below (or set the
-//      MACPEEL_POLAR_ORG_ID env var at build time).
-//   3. Set the checkout URL used by the "Unlock Pro" upsell
-//      (`MacPeelLicenseConfig.purchaseURL`) to the real product's
-//      checkout link once it exists.
-//   4. No Polar API key/secret is needed in this binary — the
-//      customer-portal validate endpoint is deliberately public/client-safe
-//      (confirmed for MacGroom's own integration: an unauthenticated
-//      request with a well-formed body returns 404 for an unknown key, not
-//      401/403).
+// the binary. A license key activates on up to 3 Macs (`Limit
+// Activations` on the Polar benefit).
 enum MacPeelLicenseConfig {
     /// MacPeel Pro's product lives in the same `macgroom` Polar
     /// organization as MacGroom Pro and the other mac-apps products.

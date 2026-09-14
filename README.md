@@ -62,9 +62,9 @@ Polar organization/product from MacGroom's own Suite Pro license. Verified
 license state is cached in the Keychain for 7 days so Pro features keep
 working offline between checks.
 
-The Polar organization/product for MacPeel Pro doesn't exist yet — see the
-`TODO(polar)` block at the top of `Sources/License/MacPeelLicense.swift`
-for exactly what needs to be created and filled in before this goes live.
+The Polar product for MacPeel Pro is live — see the top of
+`Sources/License/MacPeelLicense.swift` for the integration details. A
+license key activates on up to 3 Macs.
 
 ## Build
 
